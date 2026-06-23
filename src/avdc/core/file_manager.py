@@ -8,8 +8,9 @@ from pathlib import Path
 
 from avdc.config import Config
 from avdc.model.movie import Movie
-from avdc.utils.http import HttpClient
 from avdc.utils.naming import build_folder_name, build_file_name
+
+import requests as _requests
 
 logger = logging.getLogger(__name__)
 
@@ -28,15 +29,15 @@ def download_cover(movie: Movie, folder: Path) -> bool:
         logger.warning("没有封面 URL，跳过下载")
         return False
 
-    http = HttpClient()
     num = movie.number
     success = False
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
     # poster.jpg (封面大图)
     poster_path = folder / "poster.jpg"
     if not poster_path.exists():
         try:
-            resp = http.get(movie.cover, timeout=30)
+            resp = _requests.get(movie.cover, headers=headers, timeout=30)
             if resp and resp.status_code == 200:
                 poster_path.write_bytes(resp.content)
                 logger.info("✅ 封面已保存: %s", poster_path.name)
@@ -61,7 +62,7 @@ def download_cover(movie: Movie, folder: Path) -> bool:
     thumb_path = folder / "thumb.jpg"
     if thumb_url and not thumb_path.exists():
         try:
-            resp = http.get(thumb_url, timeout=30)
+            resp = _requests.get(thumb_url, headers=headers, timeout=30)
             if resp and resp.status_code == 200:
                 thumb_path.write_bytes(resp.content)
                 logger.info("✅ 缩略图已保存: %s", thumb_path.name)
