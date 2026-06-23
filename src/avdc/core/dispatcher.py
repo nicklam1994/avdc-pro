@@ -40,6 +40,8 @@ def dispatch(number: str) -> Movie:
     scrapers = all_scrapers()
     enabled_sources = conf.sources()
 
+    logger.info("📋 已啟用 %d 個源: %s", len(enabled_sources), " → ".join(enabled_sources))
+
     # 确定优先 scraper
     priority_names: list[str] = []
     for pattern, names in _PRIORITY_RULES:
@@ -50,6 +52,8 @@ def dispatch(number: str) -> Movie:
     # 构建尝试顺序：优先 → 其余
     remaining = [s for s in enabled_sources if s not in priority_names and s in scrapers]
     ordered = priority_names + remaining
+
+    logger.info("🎯 嘗試順序: %s", " → ".join(ordered))
 
     # 依次尝试
     for source_name in ordered:
