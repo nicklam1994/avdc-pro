@@ -1,11 +1,11 @@
-"""DLsite scraper — metadata for RJ/VJ numbers from dlsite.com"""
+"""DLsite scraper — 同人作品元數據"""
 from __future__ import annotations
 
 import logging
 import re
 from typing import Optional
 
-from lxml import etree
+from bs4 import BeautifulSoup
 
 from avdc.model.movie import Movie
 from avdc.scrapers import register
@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 @register
-class DlsiteScraper(BaseScraper):
-    """Search DLsite.com for doujin/voice-work metadata (RJ/VJ numbers)."""
+class DLsiteScraper(BaseScraper):
+    """DLsite (dlsite.com) — 同人/商業作品"""
 
     @property
     def name(self) -> str:
@@ -26,172 +26,75 @@ class DlsiteScraper(BaseScraper):
     def base_url(self) -> str:
         return "https://www.dlsite.com"
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def search(self, number: str) -> Optional[Movie]:
-        try:
-            number = number.upper()
-            # DLsite pro URL for voice works (VJ) and general (RJ)
-            detail_url = (
-                f"{self.base_url}/pro/work/=/product_id/{number}.html"
-            )
-            html = self.fetch(detail_url, cookies={"locale": "zh-cn"})
-            if not html:
-                return None
-
-            return self._parse_detail(html, number, detail_url)
-        except Exception as e:
-            logger.debug("dlsite search failed for %s: %s", number, e)
+        # RJ/VJ 格式
+        product_id = number.upper()
+        if not product_id.startswith(("RJ", "VJ")):
             return None
 
-    # ------------------------------------------------------------------
-    # Internal parsing helpers
-    # ------------------------------------------------------------------
-
-    def _parse_detail(self, html: str, number: str, website: str) -> Optional[Movie]:
-        try:
-            tree = etree.HTML(html)
-
-            title = self._get_title(tree)
-            if not title:
-                return None
-
-            release = self._get_release(tree)
-            cover_url = self._get_cover(tree)
-            # DLsite cover URLs may need https: prefix
-            if cover_url and not cover_url.startswith("http"):
-                cover_url = "https:" + cover_url
-
-            return Movie(
-                title=self.clean_title(title),
-                movie_id=number,
-                actors=self._get_actors(tree),
-                studio=self._get_studio(tree),
-                label=self._get_label(tree),
-                director=self._get_director(tree),
-                release=release,
-                year=self.extract_year(release),
-                series=self._get_series(tree),
-                tags=self._get_tags(tree),
-                cover=cover_url,
-                outline=self._get_outline(tree),
-                website=website,
-            )
-        except Exception as e:
-            logger.debug("dlsite parse failed: %s", e)
+        url = f"{self.base_url}/maniax/work/=/product_id/{product_id}.html"
+        html = self.fetch_browser(url, wait_selector="#work_name, h1", timeout=20000)
+        if not html:
             return None
 
-    def _get_title(self, tree) -> str:
-        try:
-            result = tree.xpath('//*[@id="work_name"]/a/text()')
-            return result[0].strip() if result else ""
-        except Exception:
-            return ""
+        soup = BeautifulSoup(html, "html.parser")
 
-    def _get_actors(self, tree) -> list[str]:
-        """Voice actors (声優) — only present for VJ works."""
-        try:
-            result = tree.xpath('//th[contains(text(),"声优")]/../td/a/text()')
-            return [a.strip() for a in result if a.strip()]
-        except Exception:
-            return []
+        # 標題
+        title_el = soup.select_one("#work_name, .work_name, h1")
+        if not title_el:
+            return None
+        title = title_el.get_text(strip=True)
+        if not title or "選擇" in title or "select" in title.lower():
+            return None
 
-    def _get_studio(self, tree) -> str:
-        """Circle/社团 name or series brand."""
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"系列名")]/../td/span[1]/a/text()'
-            )
-            if result:
-                return result[0].strip()
-            result = tree.xpath(
-                '//th[contains(text(),"社团名")]/../td/span[1]/a/text()'
-            )
-            return result[0].strip() if result else ""
-        except Exception:
-            return ""
+        # 元數據
+        meta = self._extract_meta(soup)
 
-    def _get_label(self, tree) -> str:
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"系列名")]/../td/span[1]/a/text()'
-            )
-            if result:
-                return result[0].strip()
-            result = tree.xpath(
-                '//th[contains(text(),"社团名")]/../td/span[1]/a/text()'
-            )
-            return result[0].strip() if result else ""
-        except Exception:
-            return ""
+        # 演員 (サークル/ブランド)
+        actors = []
+        brand = meta.get("サークル", "") or meta.get("ブランド", "")
+        if brand:
+            actors = [brand]
 
-    def _get_director(self, tree) -> str:
-        """Scenario writer (剧情/シナリオ)."""
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"剧情")]/../td/a/text()'
-            )
-            return result[0].strip() if result else ""
-        except Exception:
-            return ""
+        # 標籤
+        tags = [t.strip() for t in meta.get("ジャンル", "").split("/") if t.strip()]
 
-    def _get_release(self, tree) -> str:
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"贩卖日")]/../td/a/text()'
-            )
-            if result:
-                # Format: 2021年01月15日 → 2021-01-15
-                return (
-                    result[0].strip()
-                    .replace("年", "-")
-                    .replace("月", "-")
-                    .replace("日", "")
-                )
-        except Exception:
-            pass
-        return ""
+        # 封面
+        cover = ""
+        img = soup.select_one("#work_sample_outer img, .product-slider-data img")
+        if img:
+            cover = img.get("src", "") or img.get("data-src", "")
 
-    def _get_tags(self, tree) -> list[str]:
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"分类")]/../td/div/a/text()'
-            )
-            return [t.strip() for t in result if t.strip()]
-        except Exception:
-            return []
+        return Movie(
+            title=self.clean_title(title),
+            movie_id=product_id,
+            actors=actors,
+            studio=brand,
+            publisher=brand,
+            director="",
+            release=meta.get("販売日", ""),
+            year=self.extract_year(meta.get("販売日", "")),
+            runtime="",
+            series="",
+            label=meta.get("サークル", ""),
+            tags=tags,
+            cover=cover,
+            cover_small="",
+            outline="",
+            trailer="",
+            website=url,
+            extra_fanart=[],
+            actor_photo={},
+        )
 
-    def _get_series(self, tree) -> str:
-        try:
-            result = tree.xpath(
-                '//th[contains(text(),"系列名")]/../td/span[1]/a/text()'
-            )
-            if result:
-                return result[0].strip()
-            result = tree.xpath(
-                '//th[contains(text(),"社团名")]/../td/span[1]/a/text()'
-            )
-            return result[0].strip() if result else ""
-        except Exception:
-            return ""
-
-    def _get_cover(self, tree) -> str:
-        try:
-            result = tree.xpath(
-                '//*[@id="work_left"]/div/div/div[2]/div/div[1]/div[1]/ul/li/img/@src'
-            )
-            return result[0] if result else ""
-        except Exception:
-            return ""
-
-    def _get_outline(self, tree) -> str:
-        try:
-            result = tree.xpath('//*[@id="main_inner"]/div[3]/text()')
-            if result:
-                parts = [t.strip() for t in result if t.strip()]
-                return "\n".join(parts)
-        except Exception:
-            pass
-        return ""
+    def _extract_meta(self, soup: BeautifulSoup) -> dict:
+        """提取 dt/dd 格式元數據"""
+        meta = {}
+        for dt in soup.select("dt"):
+            dd = dt.find_next_sibling("dd")
+            if dd:
+                key = dt.get_text(strip=True)
+                val = dd.get_text(strip=True)
+                if key and len(key) < 20:
+                    meta[key] = val
+        return meta

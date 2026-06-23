@@ -12,6 +12,7 @@ requires-python = ">=3.10"
 dependencies = [
     "requests>=2.28",
     "cloudscraper>=1.2.71",
+    "playwright>=1.40",
     "lxml>=4.9",
     "beautifulsoup4>=4.11",
     "pyquery>=1.4",

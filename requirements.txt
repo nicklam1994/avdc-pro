@@ -7,3 +7,4 @@ Pillow>=9.0
 cloudscraper>=1.2
 PySocks>=1.7
 PyQt5>=5.15
+playwright>=1.40

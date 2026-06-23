@@ -1,4 +1,4 @@
-"""JavDB scraper — javdb.com 元数据抓取"""
+"""JavDB scraper — Playwright 繞過 Cloudflare"""
 from __future__ import annotations
 
 import logging
@@ -6,7 +6,6 @@ import re
 from typing import Optional
 
 from bs4 import BeautifulSoup
-from lxml import etree
 
 from avdc.model.movie import Movie
 from avdc.scrapers import register
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 @register
 class JavDBScraper(BaseScraper):
-    """JavDB (javdb.com) scraper"""
+    """JavDB (javdb.com) — 使用 Playwright 繞過 Cloudflare"""
 
     @property
     def name(self) -> str:
@@ -27,211 +26,101 @@ class JavDBScraper(BaseScraper):
     def base_url(self) -> str:
         return "https://javdb.com"
 
-    # ------------------------------------------------------------------
-    # public
-    # ------------------------------------------------------------------
     def search(self, number: str) -> Optional[Movie]:
+        # 搜索頁
         search_url = f"{self.base_url}/search?q={number}&f=all"
-        html = self.fetch(search_url)
+        html = self.fetch_browser(search_url, timeout=20000)
         if not html:
             return None
-        html = html.replace("\xa0", " ")
 
-        # 从搜索结果找到匹配番号的详情页 URL
-        detail_url, found_number = self._find_detail_url(html, number)
+        soup = BeautifulSoup(html, "html.parser")
+        detail_url = self._find_detail_url(soup, number)
         if not detail_url:
             return None
 
-        detail_html = self.fetch(detail_url)
+        # 詳情頁
+        detail_html = self.fetch_browser(detail_url, timeout=20000)
         if not detail_html:
             return None
-        detail_html = detail_html.replace("\xa0", " ")
 
-        title = self._get_title(detail_html)
-        if not title:
+        return self._parse_detail(detail_html, detail_url, number)
+
+    def _find_detail_url(self, soup: BeautifulSoup, number: str) -> Optional[str]:
+        """從搜索結果找到匹配的詳情頁 URL"""
+        for item in soup.select(".movie-list .item, .grid-item"):
+            a = item.select_one("a[href]")
+            if not a:
+                continue
+            # 檢查番號是否匹配
+            text = item.get_text(strip=True)
+            if number.upper() in text.upper():
+                href = a.get("href", "")
+                if href.startswith("/"):
+                    return self.base_url + href
+                return href
+        # fallback: 取第一個結果
+        first = soup.select_one(".movie-list .item a[href], .grid-item a[href]")
+        if first:
+            href = first.get("href", "")
+            return self.base_url + href if href.startswith("/") else href
+        return None
+
+    def _parse_detail(self, html: str, url: str, number: str) -> Optional[Movie]:
+        """解析詳情頁"""
+        soup = BeautifulSoup(html, "html.parser")
+
+        # 標題
+        title_el = soup.select_one("h2.title, .video-detail .title, h2")
+        if not title_el:
             return None
+        title = title_el.get_text(strip=True)
+        # 移除番號前綴
+        title = re.sub(r"^[A-Z]+-\d+\s*", "", title)
 
-        movie_id = found_number or self._get_num(detail_html) or number
-        actors = self._get_actor(detail_html)
-        release = self._get_release(detail_html)
+        # 元數據
+        meta = {}
+        for row in soup.select(".movie-panel-info .panel-block, .video-meta-panel .panel-block"):
+            label = row.select_one("strong, .label")
+            value = row.select_one("span:last-child, .value")
+            if label and value:
+                key = label.get_text(strip=True).rstrip(":")
+                val = value.get_text(strip=True)
+                meta[key] = val
+
+        # 演員
+        actors_raw = meta.get("演員", "")
+        actors = [a.strip().rstrip("♀♂") for a in actors_raw.split(",") if a.strip()]
+
+        # 標籤/類別
+        tags = [t.strip() for t in meta.get("類別", "").split(",") if t.strip()]
+
+        # 日期
+        release = meta.get("日期", "")
+
+        # 封面
+        cover = ""
+        img = soup.select_one(".video-cover img, img[src*=cover]")
+        if img:
+            cover = img.get("src", "") or img.get("data-src", "")
 
         return Movie(
             title=self.clean_title(title),
-            movie_id=movie_id,
-            actors=actors if actors else [],
-            studio=self._get_studio(detail_html),
-            publisher=self._get_publisher(detail_html),
-            director=self._get_director(detail_html),
+            movie_id=meta.get("番號", number),
+            actors=actors,
+            studio=meta.get("片商", ""),
+            publisher=meta.get("片商", ""),
+            director=meta.get("導演", ""),
             release=release,
             year=self.extract_year(release),
-            runtime=self._get_runtime(detail_html),
-            series=self._get_series(detail_html),
+            runtime=meta.get("時長", "").replace("分鍾", "").replace("分鐘", "").strip(),
+            series=meta.get("系列", ""),
             label="",
-            tags=self._get_tag(detail_html),
-            cover=self._get_cover(detail_html),
+            tags=tags,
+            cover=cover,
             cover_small="",
-            outline=self._get_outline(detail_html),
+            outline="",
             trailer="",
-            website=detail_url,
+            website=url,
             extra_fanart=[],
             actor_photo={},
         )
-
-    # ------------------------------------------------------------------
-    # private helpers
-    # ------------------------------------------------------------------
-    def _find_detail_url(self, html: str, number: str) -> tuple[Optional[str], str]:
-        """从搜索结果页找到匹配番号的详情页 URL"""
-        tree = etree.HTML(html)
-        items = tree.xpath(
-            "//div[@id='videos']/div[contains(@class,'grid')]/div[contains(@class,'grid-item')]"
-        )
-        number_upper = number.upper()
-        number_lower = number.lower()
-        for idx, item in enumerate(items):
-            uid_els = item.xpath(".//a[@class='box']/div[@class='uid']/text()")
-            if not uid_els:
-                continue
-            found_num = uid_els[0].strip()
-            if found_num in (number_upper, number_lower, number):
-                href_els = item.xpath(".//a[@class='box']/@href")
-                if href_els:
-                    url = href_els[0]
-                    if not url.startswith("http"):
-                        url = self.base_url + url
-                    return url, found_num
-        # 未精确匹配，取第一个结果
-        href_els = tree.xpath(
-            "//div[@id='videos']//div[contains(@class,'grid-item')]/a[@class='box']/@href"
-        )
-        uid_els = tree.xpath(
-            "//div[@id='videos']//div[contains(@class,'grid-item')]/a[@class='box']/div[@class='uid']/text()"
-        )
-        if href_els:
-            url = href_els[0]
-            if not url.startswith("http"):
-                url = self.base_url + url
-            return url, uid_els[0].strip() if uid_els else number
-        return None, number
-
-    def _get_title(self, html: str) -> str:
-        tree = etree.HTML(html)
-        result = tree.xpath("/html/body/section/div/h2/strong/text()")
-        if result:
-            title = result[0].strip()
-            title = re.sub(r".*\] ", "", title)
-            title = title.replace("/", ",").replace("\xa0", "").replace(" : ", "")
-            return title
-        return ""
-
-    def _get_actor(self, html: str) -> list[str]:
-        tree = etree.HTML(html)
-        result1 = tree.xpath(
-            '//strong[contains(text(),"演員")]/../following-sibling::span/text()'
-        )
-        result2 = tree.xpath(
-            '//strong[contains(text(),"演員")]/../following-sibling::span/a/text()'
-        )
-        actors = [a.strip() for a in result1 + result2 if a.strip()]
-        return actors
-
-    def _get_studio(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"片商")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"片商")]/../following-sibling::span/a/text()'
-        )
-        return ("".join(r1) + "".join(r2)).strip().replace("', '", "")
-
-    def _get_publisher(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"發行")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"發行")]/../following-sibling::span/a/text()'
-        )
-        return ("".join(r1) + "".join(r2)).strip().replace("', '", "")
-
-    def _get_director(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"導演")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"導演")]/../following-sibling::span/a/text()'
-        )
-        return ("".join(r1) + "".join(r2)).strip().replace("', '", "")
-
-    def _get_release(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"時間")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"時間")]/../following-sibling::span/a/text()'
-        )
-        return ("".join(r1) + "".join(r2)).strip()
-
-    def _get_runtime(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"時長")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"時長")]/../following-sibling::span/a/text()'
-        )
-        val = ("".join(r1) + "".join(r2)).strip()
-        return val.replace(" 分鍾", "").replace(" 分鐘", "")
-
-    def _get_series(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"系列")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"系列")]/../following-sibling::span/a/text()'
-        )
-        return ("".join(r1) + "".join(r2)).strip().replace("', '", "")
-
-    def _get_num(self, html: str) -> str:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"番號")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"番號")]/../following-sibling::span/a/text()'
-        )
-        val = ("".join(r2) + "".join(r1)).strip()
-        return val.replace("_", "-")
-
-    def _get_tag(self, html: str) -> list[str]:
-        tree = etree.HTML(html)
-        r1 = tree.xpath(
-            '//strong[contains(text(),"類別")]/../following-sibling::span/text()'
-        )
-        r2 = tree.xpath(
-            '//strong[contains(text(),"類別")]/../following-sibling::span/a/text()'
-        )
-        raw = "".join(r1) + "".join(r2)
-        tags = [t.strip() for t in re.split(r"[,\s]+", raw) if t.strip()]
-        return tags
-
-    def _get_cover(self, html: str) -> str:
-        tree = etree.HTML(html)
-        result = tree.xpath(
-            "//div[@class='column column-video-cover']/a/img/@src"
-        )
-        if result:
-            src = result[0].strip()
-            if src.startswith("//"):
-                return "https:" + src
-            return src
-        return ""
-
-    def _get_outline(self, html: str) -> str:
-        tree = etree.HTML(html)
-        result = tree.xpath('//*[@id="introduction"]/dd/p[1]/text()')
-        return result[0].strip() if result else ""

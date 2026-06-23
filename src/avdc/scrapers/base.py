@@ -35,6 +35,11 @@ class BaseScraper(ABC):
         """封装 get_html，子类可直接使用"""
         return get_html(url, **kwargs)
 
+    def fetch_browser(self, url: str, wait_selector: str = "", timeout: int = 15000) -> str:
+        """使用 Playwright 瀏覽器獲取頁面（繞過 Cloudflare）"""
+        from avdc.utils.browser import get_html_browser
+        return get_html_browser(url, wait_selector=wait_selector, timeout=timeout)
+
     def extract_year(self, release: str) -> str:
         """从日期字符串中提取年份"""
         import re
