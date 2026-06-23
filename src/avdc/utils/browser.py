@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -55,8 +56,13 @@ def get_html_browser(url: str, wait_selector: str = "", timeout: int = 15000) ->
     使用 Playwright 瀏覽器獲取頁面 HTML。
     如果 Playwright 未安裝，自動 fallback 到 cloudscraper。
     """
+    # Playwright sync API 不支持非主線程 (greenlet 限制)
+    if threading.current_thread() is not threading.main_thread():
+        logger.debug("非主線程，使用 cloudscraper 替代: %s", url)
+        return _fallback_cloudscraper(url)
+
     if not is_playwright_available():
-        logger.info("Playwright 未安裝，使用 cloudscraper 替代: %s", url)
+        logger.debug("Playwright 未安裝，使用 cloudscraper 替代: %s", url)
         return _fallback_cloudscraper(url)
 
     context = _get_browser()

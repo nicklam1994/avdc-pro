@@ -58,7 +58,7 @@ def dispatch(number: str) -> Movie:
             continue
         try:
             scraper = scraper_cls()
-            logger.debug("尝试 %s 搜索 %s", source_name, number)
+            logger.info("🔍 %s 搜索 %s ...", source_name, number)
             movie = scraper.search(number)
             if movie and movie.is_filled():
                 movie.website = scraper.base_url
@@ -66,6 +66,8 @@ def dispatch(number: str) -> Movie:
                 return movie
         except Exception as e:
             logger.warning("❌ %s 异常: %s", source_name, e)
+        else:
+            logger.info("⏭️ %s 未找到", source_name)
 
     logger.warning("所有数据源均未找到: %s (尝试了 %d 个源)", number, len(ordered))
     return Movie()
