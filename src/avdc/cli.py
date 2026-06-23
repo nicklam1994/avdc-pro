@@ -9,7 +9,7 @@ from pathlib import Path
 from avdc import __version__
 from avdc.config import Config
 from avdc.core.dispatcher import dispatch
-from avdc.core.file_manager import move_to_failed, move_to_success
+from avdc.core.file_manager import download_cover, move_to_failed, move_to_success
 from avdc.core.nfo_writer import write_nfo
 from avdc.core.number_parser import extract_number, scan_videos
 from avdc.model.movie import Movie
@@ -38,7 +38,8 @@ def process_single(number: str, filepath: str = "", config: Config = None) -> Mo
         from avdc.core.file_manager import create_output_folder
         folder = create_output_folder(movie, success_dir)
     write_nfo(movie, folder)
-    return movie
+    download_cover(movie, folder)
+    print(f"✅ 处理完成: {folder}")
 
 
 def run_gui():

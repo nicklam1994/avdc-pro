@@ -9,7 +9,7 @@ from PySide6.QtCore import QThread, Signal
 
 from avdc.config import Config
 from avdc.core.dispatcher import dispatch
-from avdc.core.file_manager import move_to_failed, move_to_success
+from avdc.core.file_manager import download_cover, move_to_failed, move_to_success
 from avdc.core.nfo_writer import write_nfo
 from avdc.core.number_parser import extract_number, scan_videos
 
@@ -86,9 +86,10 @@ class SingleScrapeWorker(QThread):
         try:
             movie = dispatch(self.number)
             if movie.is_filled():
-                from avdc.core.file_manager import create_output_folder
+                from avdc.core.file_manager import create_output_folder, download_cover
                 folder = create_output_folder(movie, self.config.success_folder())
                 write_nfo(movie, folder)
+                download_cover(movie, folder)
                 self.result.emit(
                     movie.movie_id, movie.title, movie.actor_str,
                     movie.tag_str, movie.outline
