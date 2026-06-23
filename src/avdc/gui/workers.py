@@ -73,8 +73,8 @@ class ScrapeWorker(QThread):
 class SingleScrapeWorker(QThread):
     """單番號刮削工作線程 — missav(元數據) + jav321(圖片) 合併"""
 
-    # (number, title, actors, director, studio, series, release, tags, outline, cover_url)
-    result = Signal(str, str, str, str, str, str, str, str, str, str)
+    # (number, title, actors, director, studio, series, release, tags, outline, cover_url, fanart_urls)
+    result = Signal(str, str, str, str, str, str, str, str, str, str, str)
     log = Signal(str)
     error = Signal(str)
     finished = Signal()
@@ -129,11 +129,12 @@ class SingleScrapeWorker(QThread):
                 download_cover(movie, folder)
                 # 下載劇照
                 self._download_extra(movie, folder)
+                fanart_str = "|".join(movie.extra_fanart) if movie.extra_fanart else ""
                 self.result.emit(
                     movie.movie_id, movie.title, movie.actor_str,
                     movie.director, movie.studio, movie.series,
                     movie.release, movie.tag_str, movie.outline or "",
-                    movie.cover or ""
+                    movie.cover or "", fanart_str
                 )
             else:
                 self.error.emit(f"未找到: {self.number}")

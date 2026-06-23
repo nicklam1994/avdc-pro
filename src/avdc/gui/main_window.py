@@ -389,7 +389,8 @@ class MainWindow(QMainWindow):
 
     def _on_single_result(self, number: str, title: str, actors: str,
                            director: str, studio: str, series: str,
-                           release: str, tags: str, outline: str, cover_url: str = ""):
+                           release: str, tags: str, outline: str,
+                           cover_url: str = "", fanart_urls: str = ""):
         self.single_log.append_safe(f"[+] {number} | {title} | {actors}")
         self._single_info["number"].setText(number)
         self._single_info["title"].setText(title)
@@ -402,7 +403,11 @@ class MainWindow(QMainWindow):
         self._single_info["outline"].setText(outline[:500] if outline else "—")
         if cover_url:
             self.single_cover.load_image(cover_url)
-            self.single_log.append_safe(f"[+] 封面已加載")
+            self.single_log.append_safe(f"[+] 海報已加載")
+        if fanart_urls:
+            urls = [u for u in fanart_urls.split("|") if u]
+            self.single_cover.load_fanart(urls)
+            self.single_log.append_safe(f"[+] {len(urls)} 張劇照已加載")
 
     # ═══════════════════ 工具 ═══════════════════
 
