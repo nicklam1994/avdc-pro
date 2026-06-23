@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Config (user-specific)
+config.ini
+!data/config.ini
+
+# Output
+failed/
+JAV_output/
+*.nfo
+*.jpg
+*.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

@@ -1,0 +1,11 @@
+version: "3.8"
+services:
+  avdc:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./config.ini:/data/config.ini
+      - /path/to/videos:/data/videos:ro
+      - /path/to/output:/data/JAV_output
+    command: ["./videos"]
