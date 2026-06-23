@@ -1,4 +1,4 @@
-"""核心调度器 — 合併填補策略: 每層抓完檢查缺失, 有缺失就繼續下一層補齊"""
+"""核心调度器 — Fallback 策略: 源失敗才下一個, missav+jav321 作為一對"""
 from __future__ import annotations
 
 import logging
@@ -10,102 +10,94 @@ from avdc.scrapers import all_scrapers
 
 logger = logging.getLogger(__name__)
 
-# 需要檢查的元數據字段
-_META_FIELDS = ["title", "director", "studio", "series", "release", "runtime", "outline"]
-
-# 優先級分層
+# 優先級分層: 每層是一個組, 組內多源合併, 組間 fallback
 _LAYERS = [
     ["missav", "jav321"],   # Layer 1: 互補 (元數據+圖片)
-    ["javbus"],              # Layer 2: 補齊
-    ["javdb"],               # Layer 3: 最後補齊
+    ["javbus"],              # Layer 2: fallback
+    ["javdb"],               # Layer 3: fallback
 ]
 
 
-def _check_missing(movie: Movie) -> list[str]:
-    """檢查 Movie 缺失的字段"""
-    missing = []
-    if not movie.movie_id:
-        missing.append("movie_id")
-    for f in _META_FIELDS:
-        if not getattr(movie, f, ""):
-            missing.append(f)
-    if not movie.cover:
-        missing.append("cover")
-    if not movie.actors:
-        missing.append("actors")
-    if not movie.tags:
-        missing.append("tags")
-    return missing
+def _merge_movies(base: Movie, source: Movie) -> Movie:
+    """將 source 的數據合併到 base (base 優先, source 填充)"""
+    if not base.is_filled():
+        return source
 
-
-def _merge_from(movie: Movie, source: Movie) -> None:
-    """從 source 補齊 movie 的缺失字段 (不覆蓋已有值)"""
-    # 元數據: 只填空的
-    for fld in _META_FIELDS:
+    for fld in ("title", "director", "studio", "series", "release", "runtime", "outline"):
         val = getattr(source, fld, "")
-        if val and not getattr(movie, fld, ""):
-            setattr(movie, fld, val)
-    # 番號: 保留大寫版本
+        if val and not getattr(base, fld, ""):
+            setattr(base, fld, val)
+
     if source.movie_id:
-        if not movie.movie_id:
-            movie.movie_id = source.movie_id
-        elif source.movie_id.isupper() and not movie.movie_id.isupper():
-            movie.movie_id = source.movie_id
-    # 演員
-    if source.actors and not movie.actors:
-        movie.actors = list(source.actors)
-    # 標籤: 合併去重
+        if not base.movie_id:
+            base.movie_id = source.movie_id
+        elif source.movie_id.isupper() and not base.movie_id.isupper():
+            base.movie_id = source.movie_id
+
+    if source.actors and not base.actors:
+        base.actors = list(source.actors)
+
     if source.tags:
-        existing = set(movie.tags)
+        existing = set(base.tags)
         for t in source.tags:
             if t not in existing:
-                movie.tags.append(t)
+                base.tags.append(t)
                 existing.add(t)
-    # 圖片: 只填空的, 但 DMM/jdbstatic 圖片優先覆蓋
+
     if source.cover:
-        if not movie.cover:
-            movie.cover = source.cover
-        elif "dmm.co.jp" in source.cover and "dmm.co.jp" not in movie.cover:
-            # DMM 圖片質量更高, 覆蓋非 DMM 的
-            movie.cover = source.cover
-    if source.cover_small and not movie.cover_small:
-        movie.cover_small = source.cover_small
-    # 劇照: 合併
+        if not base.cover:
+            base.cover = source.cover
+        elif "dmm.co.jp" in source.cover and "dmm.co.jp" not in base.cover:
+            base.cover = source.cover
+
+    if source.cover_small and not base.cover_small:
+        base.cover_small = source.cover_small
+
     if source.extra_fanart:
-        if not movie.extra_fanart:
-            movie.extra_fanart = list(source.extra_fanart)
+        if not base.extra_fanart:
+            base.extra_fanart = list(source.extra_fanart)
         else:
-            existing_urls = set(movie.extra_fanart)
+            existing_urls = set(base.extra_fanart)
             for u in source.extra_fanart:
                 if u not in existing_urls:
-                    movie.extra_fanart.append(u)
+                    base.extra_fanart.append(u)
+
+    return base
 
 
-def _scrape_source(number: str, source_name: str, scrapers: dict) -> Optional[Movie]:
-    """從單個源抓取"""
-    cls = scrapers.get(source_name)
-    if not cls:
-        return None
-    try:
-        logger.info("🔍 %s 搜索 %s ...", source_name, number)
-        m = cls().search(number)
-        if m and m.is_filled():
-            logger.info("✅ %s 找到: %s", source_name, m.title)
-            return m
-        logger.info("⏭️ %s 未找到", source_name)
-    except Exception as e:
-        logger.warning("❌ %s 异常: %s", source_name, e)
+def _scrape_layer(number: str, layer_sources: list[str], scrapers: dict) -> Optional[Movie]:
+    """從一層的多個源抓取, 合併結果"""
+    movie = Movie()
+    found = False
+
+    for src in layer_sources:
+        cls = scrapers.get(src)
+        if not cls:
+            continue
+        try:
+            logger.info("🔍 %s 搜索 %s ...", src, number)
+            m = cls().search(number)
+            if m and m.is_filled():
+                logger.info("✅ %s 找到: %s", src, m.title)
+                movie = _merge_movies(movie, m)
+                found = True
+            else:
+                logger.info("⏭️ %s 未找到", src)
+        except Exception as e:
+            logger.warning("❌ %s 异常: %s", src, e)
+
+    if found:
+        return movie
     return None
 
 
 def dispatch(number: str) -> Movie:
     """
-    合併填補策略:
-      1. 從 Layer 1 (missav+jav321) 抓取, 合併
-      2. 檢查缺失字段
-      3. 有缺失 → 從 Layer 2 (javbus) 補齊
-      4. 還有缺失 → 從 Layer 3 (javdb) 補齊
-      5. 還有缺失 → 從其他啟用源補齊
+    Fallback 策略:
+      Layer 1: missav + jav321 (合併) → 成功就返回
+      Layer 2: javbus → 成功就返回
+      Layer 3: javdb → 成功就返回
+      其他源: 逐個嘗試
     """
     conf = Config.get_instance()
     scrapers = all_scrapers()
@@ -113,49 +105,34 @@ def dispatch(number: str) -> Movie:
 
     logger.info("📋 已啟用源: %s", ", ".join(enabled))
 
-    movie = Movie()
-    tried_sources = set()
-
-    # 按層處理
+    # 按層 fallback
     for layer_sources in _LAYERS:
-        # 該層中啟用的源
         active = [s for s in layer_sources if s in enabled and s in scrapers]
         if not active:
             continue
 
-        # 該層的每個源都嘗試 (missav 和 jav321 都跑)
-        for src in active:
-            if src in tried_sources:
-                continue
-            tried_sources.add(src)
-            result = _scrape_source(number, src, scrapers)
-            if result:
-                _merge_from(movie, result)
-                movie.website = src
-
-        # 檢查是否還缺字段
-        missing = _check_missing(movie)
-        if not missing:
-            logger.info("✅ 所有字段已完整, 無需繼續")
-            break
-        logger.info("📋 還缺 %d 項: %s", len(missing), ", ".join(missing))
+        movie = _scrape_layer(number, active, scrapers)
+        if movie:
+            movie.website = "+".join(active)
+            return movie
 
     # 其他啟用的源 (javlib, fanza, etc.)
-    if _check_missing(movie):
-        others = [s for s in enabled if s not in tried_sources and s in scrapers]
-        for src in others:
-            if not _check_missing(movie):
-                break
-            result = _scrape_source(number, src, scrapers)
-            if result:
-                _merge_from(movie, result)
-
-    missing = _check_missing(movie)
-    if missing:
-        logger.info("📋 最終仍缺 %d 項: %s", len(missing), ", ".join(missing))
-
-    if movie.is_filled():
-        return movie
+    tried = {s for layer in _LAYERS for s in layer}
+    others = [s for s in enabled if s not in tried and s in scrapers]
+    for src in others:
+        cls = scrapers.get(src)
+        if not cls:
+            continue
+        try:
+            logger.info("🔍 %s 搜索 %s ...", src, number)
+            m = cls().search(number)
+            if m and m.is_filled():
+                m.website = src
+                logger.info("✅ %s 找到: %s", src, m.title)
+                return m
+            logger.info("⏭️ %s 未找到", src)
+        except Exception as e:
+            logger.warning("❌ %s 异常: %s", src, e)
 
     logger.warning("所有数据源均未找到: %s", number)
     return Movie()
