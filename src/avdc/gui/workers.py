@@ -1,19 +1,17 @@
-"""QThread 工作線程 — 所有耗時操作在此執行，通過信號回報進度"""
+"""QThread 工作線程 — PySide6"""
 from __future__ import annotations
 
 import logging
 import os
-import shutil
 from typing import Optional
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from avdc.config import Config
 from avdc.core.dispatcher import dispatch
 from avdc.core.file_manager import move_to_failed, move_to_success
 from avdc.core.nfo_writer import write_nfo
 from avdc.core.number_parser import extract_number, scan_videos
-from avdc.model.movie import Movie
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +19,10 @@ logger = logging.getLogger(__name__)
 class ScrapeWorker(QThread):
     """批量刮削工作線程"""
 
-    progress = pyqtSignal(int, int, str)   # (current, total, message)
-    movie_found = pyqtSignal(str, str, str)  # (number, title, actor)
-    finished = pyqtSignal(int, int)          # (success, failed)
-    error = pyqtSignal(str)
+    progress = Signal(int, int, str)
+    movie_found = Signal(str, str, str)
+    finished = Signal(int, int)
+    error = Signal(str)
 
     def __init__(self, directory: str, config: Config, parent=None):
         super().__init__(parent)
@@ -75,9 +73,9 @@ class ScrapeWorker(QThread):
 class SingleScrapeWorker(QThread):
     """單番號刮削工作線程"""
 
-    result = pyqtSignal(str, str, str, str, str)  # (number, title, actor, tags, outline)
-    error = pyqtSignal(str)
-    finished = pyqtSignal()
+    result = Signal(str, str, str, str, str)
+    error = Signal(str)
+    finished = Signal()
 
     def __init__(self, number: str, config: Config, parent=None):
         super().__init__(parent)
@@ -103,17 +101,17 @@ class SingleScrapeWorker(QThread):
 
 
 class EmbyActorWorker(QThread):
-    """Emby 演員頭像操作工作線程"""
+    """Emby 演員頭像操作"""
 
-    log = pyqtSignal(str)
-    finished = pyqtSignal()
+    log = Signal(str)
+    finished = Signal()
 
     def __init__(self, emby_url: str, api_key: str, mode: str = "list",
                  actor_dir: str = "", parent=None):
         super().__init__(parent)
         self.emby_url = emby_url.replace("：", ":")
         self.api_key = api_key
-        self.mode = mode  # "list" or "upload"
+        self.mode = mode
         self.actor_dir = actor_dir
 
     def run(self):
@@ -136,7 +134,6 @@ class EmbyActorWorker(QThread):
             self._list_actors(data)
         elif self.mode == "upload":
             self._upload_avatars(data)
-
         self.finished.emit()
 
     def _list_actors(self, data: dict):
@@ -149,16 +146,14 @@ class EmbyActorWorker(QThread):
     def _upload_avatars(self, data: dict):
         import base64
         import requests as req
-
         if not self.actor_dir or not os.path.exists(self.actor_dir):
             self.log.emit(f"[-] 演員頭像目錄不存在: {self.actor_dir}")
             return
-
         files = os.listdir(self.actor_dir)
         count = 0
         for actor in data["Items"]:
             if actor.get("ImageTags"):
-                continue  # 已有頭像
+                continue
             name = actor["Name"]
             pic = None
             for ext in (".jpg", ".png"):
@@ -167,7 +162,6 @@ class EmbyActorWorker(QThread):
                     break
             if not pic:
                 continue
-
             pic_path = os.path.join(self.actor_dir, pic)
             try:
                 with open(pic_path, "rb") as f:
@@ -182,5 +176,4 @@ class EmbyActorWorker(QThread):
                 self.log.emit(f"[+] 上傳成功: {name}")
             except Exception as e:
                 self.log.emit(f"[-] 上傳失敗 {name}: {e}")
-
         self.log.emit(f"[*] 共上傳 {count} 個頭像")

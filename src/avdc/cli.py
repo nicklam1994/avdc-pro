@@ -27,20 +27,16 @@ def setup_logging(debug: bool = False) -> None:
 def process_single(number: str, filepath: str = "", config: Config = None) -> Movie:
     """處理單個番號：刮削 → 生成文件"""
     movie = dispatch(number)
-
     if not movie.is_filled():
         if filepath:
             move_to_failed(filepath, config.failed_folder())
         return movie
-
     success_dir = config.success_folder()
-
     if filepath:
         folder = move_to_success(filepath, movie, success_dir)
     else:
         from avdc.core.file_manager import create_output_folder
         folder = create_output_folder(movie, success_dir)
-
     write_nfo(movie, folder)
     return movie
 
@@ -53,13 +49,13 @@ def run_gui():
     app = create_app()
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="avdc",
-        description="AVDC-Pro — AV Data Capture 元數據刮削器 v" + __version__,
+        description=f"AVDC-Pro — AV Data Capture 元數據刮削器 v{__version__}",
     )
     parser.add_argument("path", nargs="?", default=".", help="視頻目錄路徑（默認當前目錄）")
     parser.add_argument("-n", "--number", help="單番號模式，直接刮削指定番號")
@@ -71,7 +67,6 @@ def main() -> None:
     args = parser.parse_args()
     setup_logging(args.debug)
 
-    # GUI 模式
     if args.gui:
         run_gui()
         return
@@ -79,7 +74,6 @@ def main() -> None:
     config = Config.get_instance(args.config)
     logger = logging.getLogger("avdc")
 
-    # 單番號模式
     if args.number:
         movie = process_single(args.number, config=config)
         if movie.is_filled():
@@ -89,7 +83,6 @@ def main() -> None:
             sys.exit(1)
         return
 
-    # 批量掃描模式
     target_dir = Path(args.path).resolve()
     if not target_dir.is_dir():
         logger.error("目錄不存在: %s", target_dir)
@@ -97,19 +90,16 @@ def main() -> None:
 
     escape = config.escape_folders().split(",")
     videos = scan_videos(str(target_dir), escape)
-
     if not videos:
         logger.info("未找到視頻文件")
         return
 
     logger.info("找到 %d 個視頻文件，開始處理...", len(videos))
-
     success, failed = 0, 0
     for i, rel_path in enumerate(videos, 1):
         filepath = str(target_dir / rel_path)
         number = extract_number(rel_path)
         logger.info("[%d/%d] 處理: %s → %s", i, len(videos), rel_path, number)
-
         movie = process_single(number, filepath, config)
         if movie.is_filled():
             success += 1

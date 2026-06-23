@@ -1,78 +1,195 @@
-/* AVDC-Pro 全局樣式表 — Catppuccin Mocha 配色 */
+/* ═══════════════════════════════════════════════════════
+   AVDC-Pro — Catppuccin Mocha 現代主題
+   ═══════════════════════════════════════════════════════ */
 
+/* 全局 */
+* {
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+}
+
+/* 主窗口 */
 QMainWindow {
     background: #1e1e2e;
 }
 
-QWidget#centralwidget {
+QWidget#centralWidget {
     background: #1e1e2e;
 }
 
-/* 導航欄 */
-QWidget[objectName="nav"] {
-    background: #181825;
+QWidget#contentArea {
+    background: #1e1e2e;
 }
 
-/* 按鈕 */
-QPushButton {
-    background: #89b4fa;
-    color: #1e1e2e;
+/* ═══════ 側邊欄 ═══════ */
+QFrame#sidebar {
+    background: #11111b;
+    border-right: 1px solid #181825;
+}
+
+QLabel#logo {
+    color: #89b4fa;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 12px 0;
+}
+
+QPushButton#navButton {
+    background: transparent;
+    color: #a6adc8;
     border: none;
     border-radius: 8px;
-    padding: 8px 16px;
+    padding: 10px 16px;
+    text-align: left;
     font-size: 14px;
+}
+
+QPushButton#navButton:hover {
+    background: #181825;
+    color: #cdd6f4;
+}
+
+QPushButton#navButton:checked {
+    background: #313244;
+    color: #89b4fa;
     font-weight: bold;
 }
 
+QLabel#versionLabel {
+    color: #585b70;
+    font-size: 11px;
+}
+
+/* ═══════ 標題欄 ═══════ */
+QWidget#titleBar {
+    background: #181825;
+    border-bottom: 1px solid #313244;
+}
+
+QLabel#pageTitle {
+    color: #cdd6f4;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QPushButton#windowButton {
+    background: transparent;
+    color: #a6adc8;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+QPushButton#windowButton:hover {
+    background: #313244;
+    color: #cdd6f4;
+}
+
+QPushButton#closeButton {
+    background: transparent;
+    color: #a6adc8;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+QPushButton#closeButton:hover {
+    background: #f38ba8;
+    color: #1e1e2e;
+}
+
+/* ═══════ 卡片 ═══════ */
+QFrame#card {
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+QFrame#toolCard {
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+QFrame#toolCard:hover {
+    background: #1e1e2e;
+    border: 1px solid #89b4fa;
+}
+
+/* ═══════ 按鈕 ═══════ */
+QPushButton {
+    background: #313244;
+    color: #cdd6f4;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
 QPushButton:hover {
-    background: #74c7ec;
+    background: #45475a;
 }
 
 QPushButton:disabled {
-    background: #585b70;
-    color: #a6adc8;
-}
-
-QPushButton#pushButton_start_cap {
-    background: #a6e3a1;
-}
-
-/* 進度條 */
-QProgressBar {
-    border: 2px solid #313244;
-    border-radius: 8px;
-    text-align: center;
     background: #181825;
+    color: #585b70;
 }
 
-QProgressBar::chunk {
+QPushButton#primaryButton {
     background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 #89b4fa, stop:1 #cba6f7);
-    border-radius: 6px;
+        stop:0 #89b4fa, stop:1 #74c7ec);
+    color: #1e1e2e;
+    font-weight: bold;
 }
 
-/* 文本瀏覽器 */
+QPushButton#primaryButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #74c7ec, stop:1 #89dceb);
+}
+
+QPushButton#primaryButton:disabled {
+    background: #45475a;
+    color: #585b70;
+}
+
+/* ═══════ 進度條 ═══════ */
+QProgressBar#mainProgress {
+    border: none;
+    border-radius: 3px;
+    background: #313244;
+    max-height: 6px;
+}
+
+QProgressBar#mainProgress::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #89b4fa, stop:0.5 #cba6f7, stop:1 #f5c2e7);
+    border-radius: 3px;
+}
+
+/* ═══════ 文本瀏覽器 ═══════ */
 QTextBrowser {
-    background: #181825;
-    color: #cdd6f4;
+    background: #11111b;
+    color: #a6adc8;
     border: 1px solid #313244;
     border-radius: 8px;
     font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
     font-size: 12px;
-    padding: 4px;
+    padding: 8px;
+    selection-background-color: #45475a;
 }
 
-/* 樹形控件 */
+/* ═══════ 樹形控件 ═══════ */
 QTreeWidget {
-    background: #181825;
+    background: transparent;
     color: #cdd6f4;
-    border: 1px solid #313244;
-    border-radius: 8px;
+    border: none;
     outline: none;
 }
 
 QTreeWidget::item {
-    padding: 4px;
+    padding: 6px 4px;
+    border-radius: 6px;
 }
 
 QTreeWidget::item:selected {
@@ -81,87 +198,122 @@ QTreeWidget::item:selected {
 }
 
 QTreeWidget::item:hover {
-    background: #45475a;
+    background: #1e1e2e;
 }
 
-/* 標籤 */
+/* ═══════ 輸入框 ═══════ */
+QLineEdit {
+    background: #313244;
+    color: #cdd6f4;
+    border: 2px solid #45475a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+QLineEdit:focus {
+    border: 2px solid #89b4fa;
+}
+
+QLineEdit::placeholder {
+    color: #585b70;
+}
+
+/* ═══════ 標籤 ═══════ */
 QLabel {
     color: #cdd6f4;
 }
 
-/* 輸入框 */
-QLineEdit {
-    background: #313244;
+QLabel#infoLabel {
+    color: #6c7086;
+    font-size: 12px;
+}
+
+QLabel#infoValue {
     color: #cdd6f4;
-    border: 1px solid #45475a;
-    border-radius: 6px;
-    padding: 6px 10px;
+    font-size: 13px;
 }
 
-QLineEdit:focus {
-    border: 1px solid #89b4fa;
+/* ═══════ 關於頁 ═══════ */
+QLabel#aboutTitle {
+    color: #89b4fa;
+    font-size: 36px;
+    font-weight: bold;
 }
 
-/* 下拉框 */
-QComboBox {
-    background: #313244;
+QLabel#aboutVersion {
+    color: #a6adc8;
+    font-size: 16px;
+}
+
+QLabel#aboutDesc {
     color: #cdd6f4;
-    border: 1px solid #45475a;
-    border-radius: 6px;
-    padding: 6px 10px;
+    font-size: 14px;
+    line-height: 1.6;
 }
 
-QComboBox::drop-down {
-    border: none;
-}
-
-/* 分組框 */
+/* ═══════ 分組框 ═══════ */
 QGroupBox {
     color: #89b4fa;
     border: 1px solid #313244;
-    border-radius: 8px;
-    margin-top: 8px;
-    padding-top: 16px;
+    border-radius: 10px;
+    margin-top: 12px;
+    padding-top: 20px;
     font-weight: bold;
+    font-size: 13px;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
-    left: 12px;
-    padding: 0 6px;
+    left: 14px;
+    padding: 0 8px;
 }
 
-/* 複選框 */
+/* ═══════ 複選框 ═══════ */
 QCheckBox {
     color: #cdd6f4;
-    spacing: 6px;
+    spacing: 8px;
 }
 
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
-    border: 1px solid #45475a;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #45475a;
     border-radius: 4px;
     background: #313244;
 }
 
 QCheckBox::indicator:checked {
     background: #89b4fa;
-    border: 1px solid #89b4fa;
+    border: 2px solid #89b4fa;
 }
 
-/* 微調框 */
+/* ═══════ 下拉框 ═══════ */
+QComboBox {
+    background: #313244;
+    color: #cdd6f4;
+    border: 2px solid #45475a;
+    border-radius: 8px;
+    padding: 6px 12px;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+/* ═══════ 微調框 ═══════ */
 QSpinBox {
     background: #313244;
     color: #cdd6f4;
-    border: 1px solid #45475a;
-    border-radius: 6px;
-    padding: 4px 8px;
+    border: 2px solid #45475a;
+    border-radius: 8px;
+    padding: 6px 10px;
 }
 
-/* 滾動條 */
+/* ═══════ 滾動條 ═══════ */
 QScrollBar:vertical {
-    background: #181825;
+    background: transparent;
     width: 8px;
     border-radius: 4px;
 }
@@ -169,7 +321,7 @@ QScrollBar:vertical {
 QScrollBar::handle:vertical {
     background: #45475a;
     border-radius: 4px;
-    min-height: 20px;
+    min-height: 30px;
 }
 
 QScrollBar::handle:vertical:hover {
@@ -178,4 +330,29 @@ QScrollBar::handle:vertical:hover {
 
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+/* ═══════ 滾動區域 ═══════ */
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+/* ═══════ 封面預覽 ═══════ */
+QLabel#coverPoster {
+    background: #11111b;
+    border: 1px solid #313244;
+    border-radius: 10px;
+    color: #585b70;
+}
+
+QLabel#coverFanart {
+    background: #11111b;
+    border: 1px solid #313244;
+    border-radius: 10px;
+    color: #585b70;
 }
