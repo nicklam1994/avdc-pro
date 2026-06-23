@@ -70,8 +70,8 @@ class MainWindow(QMainWindow):
         # 頁面棧
         self._stack = QStackedWidget()
         self._stack.setObjectName("pageStack")
-        self._stack.addWidget(self._create_scrape_page())   # 0: 刮削
-        self._stack.addWidget(self._create_single_page())    # 1: 單番號
+        self._stack.addWidget(self._create_single_page())    # 0: 單番號
+        self._stack.addWidget(self._create_scrape_page())    # 1: 批量刮削
         self._stack.addWidget(self._create_tools_page())     # 2: 工具
         self._settings_page = SettingsPage()
         self._stack.addWidget(self._settings_page)           # 3: 設置
@@ -87,7 +87,7 @@ class MainWindow(QMainWindow):
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(16, 0, 16, 0)
 
-        self._page_title = QLabel("📋 批量刮削")
+        self._page_title = QLabel("🔍 單番號刮削")
         self._page_title.setObjectName("pageTitle")
         layout.addWidget(self._page_title)
         layout.addStretch()
@@ -159,8 +159,8 @@ class MainWindow(QMainWindow):
         self._info_labels: dict[str, QLabel] = {}
         fields = [
             ("番號", "number"), ("標題", "title"), ("演員", "actor"),
-            ("日期", "release"), ("片商", "studio"), ("系列", "series"),
-            ("標籤", "tags"), ("簡介", "outline"),
+            ("導演", "director"), ("片商", "studio"), ("系列", "series"),
+            ("日期", "release"), ("標籤", "tags"), ("簡介", "outline"),
         ]
         for display, key in fields:
             row = QHBoxLayout()
@@ -319,7 +319,7 @@ class MainWindow(QMainWindow):
     # ═══════════════════ 頁面切換 ═══════════════════
 
     def _switch_page(self, index: int):
-        titles = ["📋 批量刮削", "🔍 單番號刮削", "🔧 工具箱", "⚙️ 設置", "ℹ️ 關於"]
+        titles = ["🔍 單番號刮削", "📋 批量刮削", "🔧 工具箱", "⚙️ 設置", "ℹ️ 關於"]
         self._page_title.setText(titles[index] if index < len(titles) else "")
         # 動畫切換
         anim = QPropertyAnimation(self._stack, b"currentIndex")
@@ -356,9 +356,27 @@ class MainWindow(QMainWindow):
     def _on_progress_log(self, cur: int, total: int, msg: str):
         self.log_viewer.append_safe(f"[{cur}/{total}] {msg}")
 
-    def _on_movie_found(self, number: str, title: str, actor: str):
-        QTreeWidgetItem(self._item_succ, [f"{number} | {title} | {actor}"])
+    def _on_movie_found(self, number: str, title: str, actors: str,
+                         director: str, studio: str, series: str,
+                         release: str, tags: str, outline: str,
+                         cover_url: str = "", fanart_urls: str = ""):
+        QTreeWidgetItem(self._item_succ, [f"{number} | {title} | {actors}"])
         self._item_succ.setExpanded(True)
+        # 更新右側預覽
+        self._info_labels["number"].setText(number)
+        self._info_labels["title"].setText(title)
+        self._info_labels["actor"].setText(actors)
+        self._info_labels["director"].setText(director or "—")
+        self._info_labels["studio"].setText(studio or "—")
+        self._info_labels["series"].setText(series or "—")
+        self._info_labels["release"].setText(release or "—")
+        self._info_labels["tags"].setText(tags or "—")
+        self._info_labels["outline"].setText(outline[:500] if outline else "—")
+        if cover_url:
+            self.cover_viewer.load_image(cover_url)
+        if fanart_urls:
+            urls = [u for u in fanart_urls.split("|") if u]
+            self.cover_viewer.load_fanart(urls)
 
     def _on_batch_finished(self, success: int, failed: int):
         self.btn_start.setEnabled(True)
@@ -419,22 +437,22 @@ class MainWindow(QMainWindow):
         if path:
             from avdc.core.number_parser import extract_number
             number = extract_number(path)
-            self._switch_page(1)
+            self._switch_page(0)
             self.edit_number.setText(number)
             self._start_single_scrape()
 
     def _select_directory(self):
-        self._switch_page(0)
+        self._switch_page(1)
         self._start_batch_scrape()
 
     def _emby_action(self, mode: str):
         conf = Config.get_instance()
         url, key = conf.emby_url(), conf.api_key()
         if not url or not key:
-            self._switch_page(0)
+            self._switch_page(1)
             self.log_viewer.append_safe("[-] 請先在設置中配置 Emby URL 和 API Key")
             return
-        self._switch_page(0)
+        self._switch_page(1)
         self._emby_worker = EmbyActorWorker(url, key, mode, "Actor")
         self._emby_worker.log.connect(lambda msg: self.log_viewer.append_safe(msg))
         self._emby_worker.finished.connect(lambda: self.log_viewer.append_safe("[*] Emby 操作完成"))

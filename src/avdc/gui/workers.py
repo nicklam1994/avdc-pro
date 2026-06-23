@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class ScrapeWorker(QThread):
-    """批量刮削工作線程"""
+    """批量刮削工作線程 — missav(元數據) + jav321(圖片) 合併"""
 
     progress = Signal(int, int, str)
-    movie_found = Signal(str, str, str)
+    # (number, title, actors, director, studio, series, release, tags, outline, cover_url, fanart_urls)
+    movie_found = Signal(str, str, str, str, str, str, str, str, str, str, str)
     finished = Signal(int, int)
     error = Signal(str)
 
@@ -31,6 +32,10 @@ class ScrapeWorker(QThread):
         self._cancelled = False
 
     def run(self):
+        from avdc.scrapers import get_scraper
+        from avdc.model.movie import Movie
+        from avdc.core.file_manager import create_output_folder, download_cover
+
         escape = self.config.escape_folders().split(",")
         videos = scan_videos(self.directory, escape)
         total = len(videos)
@@ -45,11 +50,19 @@ class ScrapeWorker(QThread):
             self.progress.emit(i, total, f"處理: {rel_path} → {number}")
 
             try:
-                movie = dispatch(number)
-                if movie.is_filled():
+                movie = self._scrape_merged(number)
+                if movie and movie.is_filled():
                     folder = move_to_success(filepath, movie, self.config.success_folder())
                     write_nfo(movie, folder)
-                    self.movie_found.emit(movie.movie_id, movie.title, movie.first_actor)
+                    download_cover(movie, folder)
+                    self._download_extra(movie, folder)
+                    fanart_str = "|".join(movie.extra_fanart) if movie.extra_fanart else ""
+                    self.movie_found.emit(
+                        movie.movie_id, movie.title, movie.actor_str,
+                        movie.director, movie.studio, movie.series,
+                        movie.release, movie.tag_str, movie.outline or "",
+                        movie.cover or "", fanart_str
+                    )
                     success += 1
                 else:
                     move_to_failed(filepath, self.config.failed_folder())
@@ -65,6 +78,53 @@ class ScrapeWorker(QThread):
                 failed += 1
 
         self.finished.emit(success, failed)
+
+    def _scrape_merged(self, num: str):
+        """missav 元數據 + jav321 圖片"""
+        from avdc.scrapers import get_scraper
+        from avdc.model.movie import Movie
+
+        movie = Movie()
+        num = num.upper().strip()
+
+        missav_cls = get_scraper("missav")
+        if missav_cls:
+            m = missav_cls().search(num)
+            if m and m.is_filled():
+                movie = m
+
+        jav321_cls = get_scraper("jav321")
+        if jav321_cls:
+            m2 = jav321_cls().search(num)
+            if m2 and m2.is_filled():
+                if m2.cover:
+                    movie.cover = m2.cover
+                    if "dmm.co.jp" in m2.cover and "pl.jpg" in m2.cover:
+                        movie.cover_small = m2.cover.replace("pl.jpg", "ps.jpg")
+                if m2.extra_fanart:
+                    movie.extra_fanart = m2.extra_fanart
+
+        return movie
+
+    def _download_extra(self, movie, folder):
+        """下載 extra_fanart 劇照"""
+        if not movie.extra_fanart:
+            return
+        try:
+            import requests
+            headers = {"User-Agent": "Mozilla/5.0"}
+            for i, url in enumerate(movie.extra_fanart[:8], 1):
+                path = folder / f"fanart-{i}.jpg"
+                if path.exists():
+                    continue
+                try:
+                    r = requests.get(url, headers=headers, timeout=15)
+                    if r.status_code == 200:
+                        path.write_bytes(r.content)
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def cancel(self):
         self._cancelled = True
