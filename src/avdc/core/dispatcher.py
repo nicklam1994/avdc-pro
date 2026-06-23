@@ -1,8 +1,7 @@
-"""核心调度器 — 根据番号模式自动选择 scraper 组合"""
+"""核心调度器 — 混合策略: missav+jav321 并行 → javbus fallback → javdb fallback"""
 from __future__ import annotations
 
 import logging
-import re
 from typing import Optional
 
 from avdc.config import Config
@@ -11,67 +10,114 @@ from avdc.scrapers import all_scrapers
 
 logger = logging.getLogger(__name__)
 
-# 番号模式 → 优先 scraper 映射
-_PRIORITY_RULES: list[tuple[str, list[str]]] = [
-    # 无码番号 (纯数字开头 5+位, n\d{4}, HEYZO)
-    (r"^\d{5,}|^n\d{4}|HEYZO", ["missav", "javbus"]),
-    # 数字+字母混合 (如 259LUXU)
-    (r"^\d+\D+", ["missav", "mgstage"]),
-    # FC2
-    (r"FC2", ["missav", "fc2"]),
-    # SIRO
-    (r"SIRO", ["missav", "mgstage"]),
-    # DLsite (RJ/VJ)
-    (r"^[RV]J\d+", ["dlsite"]),
-    # FANZA CID (字母+00+数字)
-    (r"^[A-Za-z]{2,}00\d{3,}$", ["fanza"]),
-    # 欧美番号
-    (r"^[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}$", ["xcity"]),
-]
+# Priority 1: missav + jav321 (固定组合, 互补)
+_PRIMARY_SOURCES = ["missav", "jav321"]
+
+# Priority 2/3: fallback
+_FALLBACK_SOURCES = ["javbus", "javdb"]
+
+
+def _scrape_primary(number: str, scrapers: dict) -> Optional[Movie]:
+    """Priority 1: missav(元數據) + jav321(圖片) 並行合併"""
+    movie = Movie()
+    missav_ok = False
+
+    # missav — 元數據
+    cls = scrapers.get("missav")
+    if cls:
+        try:
+            logger.info("🔍 missav 搜索 %s ...", number)
+            m = cls().search(number)
+            if m and m.is_filled():
+                movie = m
+                missav_ok = True
+                logger.info("✅ missav 找到: %s", m.title)
+            else:
+                logger.info("⏭️ missav 未找到")
+        except Exception as e:
+            logger.warning("❌ missav 异常: %s", e)
+
+    # jav321 — 圖片 (DMM 高清)
+    cls = scrapers.get("jav321")
+    if cls:
+        try:
+            logger.info("🔍 jav321 搜索 %s ...", number)
+            m = cls().search(number)
+            if m and m.is_filled():
+                # 補充元數據 (如果 missav 失敗)
+                if not missav_ok:
+                    movie = m
+                # 圖片覆蓋 (DMM 高質量)
+                if m.cover:
+                    movie.cover = m.cover
+                    if "dmm.co.jp" in m.cover and "pl.jpg" in m.cover:
+                        movie.cover_small = m.cover.replace("pl.jpg", "ps.jpg")
+                if m.extra_fanart:
+                    movie.extra_fanart = m.extra_fanart
+                logger.info("✅ jav321 找到: %d 張圖片", len(m.extra_fanart))
+            else:
+                logger.info("⏭️ jav321 未找到")
+        except Exception as e:
+            logger.warning("❌ jav321 异常: %s", e)
+
+    if movie.is_filled():
+        movie.website = "missav+jav321"
+        return movie
+    return None
+
+
+def _scrape_fallback(number: str, source_name: str, scrapers: dict) -> Optional[Movie]:
+    """Priority 2/3: 單源 fallback"""
+    cls = scrapers.get(source_name)
+    if not cls:
+        return None
+    try:
+        logger.info("🔍 %s 搜索 %s ...", source_name, number)
+        m = cls().search(number)
+        if m and m.is_filled():
+            m.website = source_name
+            logger.info("✅ %s 找到: %s", source_name, m.title)
+            return m
+        logger.info("⏭️ %s 未找到", source_name)
+    except Exception as e:
+        logger.warning("❌ %s 异常: %s", source_name, e)
+    return None
 
 
 def dispatch(number: str) -> Movie:
     """
-    根据番号自动选择最佳 scraper 组合。
-    遵循：优先匹配的 scraper 先尝试，失败后 fallback 到完整列表。
+    混合策略:
+      Layer 1: missav + jav321 並行 (元數據 + 圖片)
+      Layer 2: javbus fallback
+      Layer 3: javdb fallback
     返回 Movie 对象（可能未填充，调用方需检查 is_filled()）。
     """
     conf = Config.get_instance()
     scrapers = all_scrapers()
-    enabled_sources = conf.sources()
+    enabled = set(conf.sources())
 
-    logger.info("📋 已啟用 %d 個源: %s", len(enabled_sources), " → ".join(enabled_sources))
+    logger.info("📋 已啟用源: %s", ", ".join(enabled))
 
-    # 确定优先 scraper
-    priority_names: list[str] = []
-    for pattern, names in _PRIORITY_RULES:
-        if re.search(pattern, number, re.IGNORECASE):
-            priority_names = [n for n in names if n in scrapers and n in enabled_sources]
-            break
+    # Layer 1: missav + jav321 並行
+    if "missav" in enabled or "jav321" in enabled:
+        movie = _scrape_primary(number, scrapers)
+        if movie:
+            return movie
 
-    # 构建尝试顺序：优先 → 其余
-    remaining = [s for s in enabled_sources if s not in priority_names and s in scrapers]
-    ordered = priority_names + remaining
-
-    logger.info("🎯 嘗試順序: %s", " → ".join(ordered))
-
-    # 依次尝试
-    for source_name in ordered:
-        scraper_cls = scrapers.get(source_name)
-        if not scraper_cls:
+    # Layer 2/3: fallback
+    for src in _FALLBACK_SOURCES:
+        if src not in enabled:
             continue
-        try:
-            scraper = scraper_cls()
-            logger.info("🔍 %s 搜索 %s ...", source_name, number)
-            movie = scraper.search(number)
-            if movie and movie.is_filled():
-                movie.website = scraper.base_url
-                logger.info("✅ %s 找到: %s", source_name, movie.title)
-                return movie
-        except Exception as e:
-            logger.warning("❌ %s 异常: %s", source_name, e)
-        else:
-            logger.info("⏭️ %s 未找到", source_name)
+        movie = _scrape_fallback(number, src, scrapers)
+        if movie:
+            return movie
 
-    logger.warning("所有数据源均未找到: %s (尝试了 %d 个源)", number, len(ordered))
+    # 其他啟用的源 (javlib, fanza, etc.)
+    others = [s for s in enabled if s not in _PRIMARY_SOURCES and s not in _FALLBACK_SOURCES]
+    for src in others:
+        movie = _scrape_fallback(number, src, scrapers)
+        if movie:
+            return movie
+
+    logger.warning("所有数据源均未找到: %s", number)
     return Movie()

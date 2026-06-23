@@ -167,8 +167,6 @@ class Config:
                 sources.append(name)
         return sources if sources else [
             "missav", "jav321", "javbus", "javdb",
-            "fanza", "xcity", "mgstage", "fc2",
-            "dlsite", "airav", "javlib", "metajavlib",
         ]
 
     def save(self, json_config: dict) -> None:

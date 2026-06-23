@@ -91,16 +91,64 @@ class SettingsPage(QWidget):
         f4.addRow("API Key:", self.edit_api_key)
         layout.addWidget(g4)
 
-        # 數據源
-        g5 = QGroupBox("數據源（勾選啟用）")
-        src_layout = QHBoxLayout(g5)
+        # 數據源 — 優先級結構
+        g5 = QGroupBox("數據源優先級")
+        src_layout = QVBoxLayout(g5)
+
+        # Priority 1: missav + jav321 (固定啟用)
+        p1 = QFrame()
+        p1.setObjectName("card")
+        p1_layout = QHBoxLayout(p1)
+        p1_layout.addWidget(QLabel("🥇 Priority 1:"))
+        lbl_p1 = QLabel("missav (元數據) + jav321 (圖片)")
+        lbl_p1.setStyleSheet("font-weight:bold; color:#a6e3a1;")
+        p1_layout.addWidget(lbl_p1)
+        p1_layout.addStretch()
+        lbl_fixed = QLabel("🔒 固定啟用")
+        lbl_fixed.setStyleSheet("color:#6c7086;")
+        p1_layout.addWidget(lbl_fixed)
+        src_layout.addWidget(p1)
+
+        # Priority 2: javbus
+        p2 = QFrame()
+        p2.setObjectName("card")
+        p2_layout = QHBoxLayout(p2)
+        p2_layout.addWidget(QLabel("🥈 Priority 2:"))
+        self.check_javbus = QCheckBox("javbus (備用數據源)")
+        self.check_javbus.setChecked(True)
+        p2_layout.addWidget(self.check_javbus)
+        p2_layout.addStretch()
+        src_layout.addWidget(p2)
+
+        # Priority 3: javdb
+        p3 = QFrame()
+        p3.setObjectName("card")
+        p3_layout = QHBoxLayout(p3)
+        p3_layout.addWidget(QLabel("🥉 Priority 3:"))
+        self.check_javdb = QCheckBox("javdb (備用數據源)")
+        self.check_javdb.setChecked(True)
+        p3_layout.addWidget(self.check_javdb)
+        p3_layout.addStretch()
+        src_layout.addWidget(p3)
+
+        # 其他數據源 (摺疊)
+        self._other_sources_visible = False
+        self.btn_toggle_others = QPushButton("▶ 其他數據源 (進階)")
+        self.btn_toggle_others.setObjectName("navButton")
+        self.btn_toggle_others.clicked.connect(self._toggle_other_sources)
+        src_layout.addWidget(self.btn_toggle_others)
+
+        self._other_sources_widget = QWidget()
+        other_layout = QHBoxLayout(self._other_sources_widget)
         self._source_checks: dict[str, QCheckBox] = {}
-        for name in ["javbus", "javdb", "javlib", "jav321", "fanza", "airav",
-                      "avsox", "xcity", "mgstage", "fc2", "dlsite", "metajavlib"]:
+        for name in ["javlib", "fanza", "airav", "xcity", "mgstage", "fc2", "dlsite", "metajavlib"]:
             cb = QCheckBox(name)
-            cb.setChecked(True)
+            cb.setChecked(False)
             self._source_checks[name] = cb
-            src_layout.addWidget(cb)
+            other_layout.addWidget(cb)
+        self._other_sources_widget.setVisible(False)
+        src_layout.addWidget(self._other_sources_widget)
+
         layout.addWidget(g5)
 
         # 保存
@@ -111,6 +159,13 @@ class SettingsPage(QWidget):
 
         layout.addStretch()
         scroll.setWidget(container)
+
+    def _toggle_other_sources(self):
+        self._other_sources_visible = not self._other_sources_visible
+        self._other_sources_widget.setVisible(self._other_sources_visible)
+        self.btn_toggle_others.setText(
+            "▼ 其他數據源 (進階)" if self._other_sources_visible else "▶ 其他數據源 (進階)"
+        )
 
     def _load_from_config(self):
         conf = Config.get_instance()
@@ -130,6 +185,8 @@ class SettingsPage(QWidget):
         self.edit_emby_url.setText(conf.emby_url())
         self.edit_api_key.setText(conf.api_key())
         enabled = set(conf.sources())
+        self.check_javbus.setChecked("javbus" in enabled)
+        self.check_javdb.setChecked("javdb" in enabled)
         for name, cb in self._source_checks.items():
             cb.setChecked(name in enabled)
 
@@ -138,7 +195,13 @@ class SettingsPage(QWidget):
         soft = "1" if self.check_softlink.isChecked() else "0"
         wh_map = {0: "emby", 1: "plex", 2: "kodi"}
         wh = wh_map.get(self.combo_warehouse.currentIndex(), "emby")
-        sources = {n: ("1" if cb.isChecked() else "0") for n, cb in self._source_checks.items()}
+        sources = {
+            "missav": "1", "jav321": "1",  # Priority 1 固定啟用
+            "javbus": "1" if self.check_javbus.isChecked() else "0",
+            "javdb": "1" if self.check_javdb.isChecked() else "0",
+        }
+        for name, cb in self._source_checks.items():
+            sources[name] = "1" if cb.isChecked() else "0"
         Config.get_instance().save({
             "common": {
                 "main_mode": mode, "success_output_folder": self.edit_success_dir.text(),

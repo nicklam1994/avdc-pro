@@ -103,6 +103,13 @@ class JavDBScraper(BaseScraper):
         if img:
             cover = img.get("src", "") or img.get("data-src", "")
 
+        # preview 圖片
+        extra_fanart = []
+        for img in soup.select("img"):
+            src = img.get("src", "") or img.get("data-src", "")
+            if src and "/thumbs/" in src:
+                extra_fanart.append(src)
+
         return Movie(
             title=self.clean_title(title),
             movie_id=meta.get("番號", number),
@@ -117,10 +124,9 @@ class JavDBScraper(BaseScraper):
             label="",
             tags=tags,
             cover=cover,
-            cover_small="",
-            outline="",
+            cover_small=cover,
+            extra_fanart=extra_fanart,
             trailer="",
             website=url,
-            extra_fanart=[],
             actor_photo={},
         )

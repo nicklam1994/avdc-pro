@@ -69,11 +69,10 @@ class JavBusScraper(BaseScraper):
             label="",
             tags=tags,
             cover=self._get_cover(html),
-            cover_small="",
-            outline=self._get_outline(html),
+            cover_small=self._get_cover(html).replace("_b.jpg", ".jpg") if self._get_cover(html) else "",
+            extra_fanart=self._get_extra_fanart(html),
             trailer="",
             website=url,
-            extra_fanart=[],
             actor_photo={},
         )
 
@@ -153,6 +152,16 @@ class JavBusScraper(BaseScraper):
                     src = self.base_url + src
                 return src
         return ""
+
+    def _get_extra_fanart(self, html: str) -> list[str]:
+        """提取 sample 預覽圖"""
+        soup = BeautifulSoup(html, "html.parser")
+        images = []
+        for a in soup.select("#sample-waterfall a.sample-box"):
+            href = a.get("href", "")
+            if href and href.startswith("http"):
+                images.append(href)
+        return images
 
     def _get_outline(self, html: str) -> str:
         tree = etree.HTML(html)
