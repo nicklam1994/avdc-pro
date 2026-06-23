@@ -29,7 +29,7 @@ def download_cover(movie: Movie, folder: Path) -> bool:
         logger.warning("没有封面 URL，跳过下载")
         return False
 
-    num = movie.number
+    num = movie.movie_id
     success = False
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
