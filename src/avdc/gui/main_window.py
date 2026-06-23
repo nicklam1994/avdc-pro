@@ -226,7 +226,8 @@ class MainWindow(QMainWindow):
 
         self._single_info: dict[str, QLabel] = {}
         for display, key in [("番號", "number"), ("標題", "title"), ("演員", "actor"),
-                              ("日期", "release"), ("片商", "studio"), ("標籤", "tags"), ("簡介", "outline")]:
+                              ("導演", "director"), ("片商", "studio"), ("系列", "series"),
+                              ("日期", "release"), ("標籤", "tags"), ("簡介", "outline")]:
             row = QHBoxLayout()
             lbl = QLabel(f"{display}:")
             lbl.setFixedWidth(50)
@@ -381,20 +382,27 @@ class MainWindow(QMainWindow):
         config = Config.get_instance()
         self._single_worker = SingleScrapeWorker(number, config)
         self._single_worker.result.connect(self._on_single_result)
+        self._single_worker.log.connect(lambda msg: self.single_log.append_safe(msg))
         self._single_worker.error.connect(lambda msg: self.single_log.append_safe(f"[-] {msg}"))
         self._single_worker.finished.connect(lambda: self.single_log.append_safe("[*] 完成"))
         self._single_worker.start()
 
-    def _on_single_result(self, number: str, title: str, actor: str, tags: str, outline: str, cover_url: str = ""):
-        self.single_log.append_safe(f"[+] {number} | {title} | {actor}")
+    def _on_single_result(self, number: str, title: str, actors: str,
+                           director: str, studio: str, series: str,
+                           release: str, tags: str, outline: str, cover_url: str = ""):
+        self.single_log.append_safe(f"[+] {number} | {title} | {actors}")
         self._single_info["number"].setText(number)
         self._single_info["title"].setText(title)
-        self._single_info["actor"].setText(actor)
-        self._single_info["tags"].setText(tags)
-        self._single_info["outline"].setText(outline[:300] if outline else "")
+        self._single_info["actor"].setText(actors)
+        self._single_info["director"].setText(director or "—")
+        self._single_info["studio"].setText(studio or "—")
+        self._single_info["series"].setText(series or "—")
+        self._single_info["release"].setText(release or "—")
+        self._single_info["tags"].setText(tags or "—")
+        self._single_info["outline"].setText(outline[:500] if outline else "—")
         if cover_url:
             self.single_cover.load_image(cover_url)
-            self.single_log.append_safe(f"[+] 封面: {cover_url[:60]}...")
+            self.single_log.append_safe(f"[+] 封面已加載")
 
     # ═══════════════════ 工具 ═══════════════════
 

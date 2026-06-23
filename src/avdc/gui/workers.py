@@ -71,9 +71,11 @@ class ScrapeWorker(QThread):
 
 
 class SingleScrapeWorker(QThread):
-    """單番號刮削工作線程"""
+    """單番號刮削工作線程 — missav(元數據) + jav321(圖片) 合併"""
 
-    result = Signal(str, str, str, str, str, str)
+    # (number, title, actors, director, studio, series, release, tags, outline, cover_url)
+    result = Signal(str, str, str, str, str, str, str, str, str, str)
+    log = Signal(str)
     error = Signal(str)
     finished = Signal()
 
@@ -84,21 +86,81 @@ class SingleScrapeWorker(QThread):
 
     def run(self):
         try:
-            movie = dispatch(self.number)
+            from avdc.scrapers import get_scraper
+            from avdc.model.movie import Movie
+            from avdc.core.file_manager import create_output_folder, download_cover
+
+            movie = Movie()
+            num = self.number.upper().strip()
+
+            # 1) missav — 元數據
+            self.log.emit(f"🔍 missav 查找: {num}")
+            missav_cls = get_scraper("missav")
+            if missav_cls:
+                m1 = missav_cls().search(num)
+                if m1 and m1.is_filled():
+                    movie = m1
+                    self.log.emit(f"✅ missav: {m1.title[:40]}")
+                else:
+                    self.log.emit("⏭️ missav: 未找到")
+
+            # 2) jav321 — 圖片 (DMM 高清封面 + 劇照)
+            self.log.emit(f"🔍 jav321 查找: {num}")
+            jav321_cls = get_scraper("jav321")
+            if jav321_cls:
+                m2 = jav321_cls().search(num)
+                if m2 and m2.is_filled():
+                    # jav321 封面 = DMM poster (更高質量)
+                    if m2.cover:
+                        movie.cover = m2.cover
+                        # DMM pattern: xxxpl.jpg → xxxps.jpg
+                        if "dmm.co.jp" in m2.cover and "pl.jpg" in m2.cover:
+                            movie.cover_small = m2.cover.replace("pl.jpg", "ps.jpg")
+                    if m2.extra_fanart:
+                        movie.extra_fanart = m2.extra_fanart
+                    self.log.emit(f"✅ jav321: {len(m2.extra_fanart)} 張圖片")
+                else:
+                    self.log.emit("⏭️ jav321: 未找到")
+
+            # 3) 寫入 + 下載
             if movie.is_filled():
-                from avdc.core.file_manager import create_output_folder, download_cover
                 folder = create_output_folder(movie, self.config.success_folder())
                 write_nfo(movie, folder)
                 download_cover(movie, folder)
+                # 下載劇照
+                self._download_extra(movie, folder)
                 self.result.emit(
                     movie.movie_id, movie.title, movie.actor_str,
-                    movie.tag_str, movie.outline, movie.cover or ""
+                    movie.director, movie.studio, movie.series,
+                    movie.release, movie.tag_str, movie.outline or "",
+                    movie.cover or ""
                 )
             else:
                 self.error.emit(f"未找到: {self.number}")
         except Exception as e:
             self.error.emit(f"異常: {self.number} — {e}")
         self.finished.emit()
+
+    def _download_extra(self, movie, folder):
+        """下載 extra_fanart 劇照"""
+        if not movie.extra_fanart:
+            return
+        try:
+            import requests
+            headers = {"User-Agent": "Mozilla/5.0"}
+            for i, url in enumerate(movie.extra_fanart[:8], 1):
+                path = folder / f"fanart-{i}.jpg"
+                if path.exists():
+                    continue
+                try:
+                    r = requests.get(url, headers=headers, timeout=15)
+                    if r.status_code == 200:
+                        path.write_bytes(r.content)
+                        self.log.emit(f"  📷 劇照 {i}: {path.name}")
+                except Exception:
+                    pass
+        except Exception as e:
+            self.log.emit(f"[-] 劇照下載異常: {e}")
 
 
 class EmbyActorWorker(QThread):

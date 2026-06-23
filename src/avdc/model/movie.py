@@ -53,3 +53,20 @@ class Movie:
     def clean_release(self) -> str:
         """统一日期分隔符为 -"""
         return self.release.replace("/", "-") if self.release else ""
+
+    def merge_from(self, other: "Movie") -> None:
+        """从另一个 Movie 合并非空字段（other 覆盖 self）"""
+        for fld in ("title", "director", "studio", "publisher", "series",
+                     "label", "release", "year", "runtime", "outline",
+                     "cover", "cover_small", "trailer", "website"):
+            val = getattr(other, fld, "")
+            if val and not getattr(self, fld, ""):
+                setattr(self, fld, val)
+        if other.actors and not self.actors:
+            self.actors = list(other.actors)
+        if other.tags and not self.tags:
+            self.tags = list(other.tags)
+        if other.extra_fanart and not self.extra_fanart:
+            self.extra_fanart = list(other.extra_fanart)
+        if other.actor_photo and not self.actor_photo:
+            self.actor_photo = dict(other.actor_photo)
