@@ -30,7 +30,9 @@ _DEFAULT_CONFIG = {
     "emby": {"emby_url": "localhost:8096", "api_key": ""},
     "javlibrary_url": {"url": "www.n43a.com"},
     "Sources": {
-        "javdb": "1", "javbus": "1", "javlib": "1", "jav321": "1",
+            "missav": "1",
+            "javbus": "1",
+            "javdb": "1",
         "fanza": "1", "airav": "1", "avsox": "1", "xcity": "1",
         "mgstage": "1", "fc2": "1", "dlsite": "1", "metajavlib": "1",
     },

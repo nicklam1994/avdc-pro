@@ -67,5 +67,5 @@ def dispatch(number: str) -> Movie:
         except Exception as e:
             logger.warning("❌ %s 异常: %s", source_name, e)
 
-    logger.warning("所有数据源均未找到: %s", number)
+    logger.warning("所有数据源均未找到: %s (尝试了 %d 个源)", number, len(ordered))
     return Movie()

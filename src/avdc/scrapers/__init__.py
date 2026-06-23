@@ -11,7 +11,14 @@ _REGISTRY: dict[str, type[BaseScraper]] = {}
 
 def register(cls: type[BaseScraper]) -> type[BaseScraper]:
     """类装饰器：注册 scraper 到全局注册表"""
-    _REGISTRY[cls.name] = cls
+    # cls.name 是 @property, 直接访问返回 property 对象而非字符串
+    # 需要通过 fget 调用获取实际值
+    name_prop = getattr(cls, 'name', None)
+    if isinstance(name_prop, property) and name_prop.fget:
+        name = name_prop.fget(cls)
+    else:
+        name = str(name_prop)
+    _REGISTRY[name] = cls
     return cls
 
 
@@ -26,5 +33,5 @@ def all_scrapers() -> dict[str, type[BaseScraper]]:
 # 导入所有 scraper 模块以触发注册
 from avdc.scrapers import (  # noqa: E402, F401
     javbus, javdb, javlib, jav321, fanza, airav,
-    avsox, xcity, mgstage, fc2, dlsite, metajavlib,
+    avsox, xcity, mgstage, fc2, dlsite, metajavlib, missav,
 )

@@ -1,4 +1,4 @@
-"""HTTP 请求工具 — 带代理、重试、随机 UA、超时分离"""
+"""HTTP 请求工具 — 带代理、重试、随机 UA、反爬绕过"""
 from __future__ import annotations
 
 import logging
@@ -7,7 +7,6 @@ import time
 from typing import Optional
 
 import requests
-from lxml import etree
 
 from avdc.config import Config
 
@@ -25,10 +24,20 @@ _session: Optional[requests.Session] = None
 
 
 def _get_session() -> requests.Session:
-    """复用 Session 对象，减少 TCP 握手开销"""
+    """复用 Session 对象，优先使用 cloudscraper 绕过反爬"""
     global _session
     if _session is None:
-        _session = requests.Session()
+        # 尝试 cloudscraper (绕过 Cloudflare 等反爬)
+        try:
+            import cloudscraper
+            _session = cloudscraper.create_scraper(
+                browser={"browser": "chrome", "platform": "windows", "mobile": False}
+            )
+            logger.debug("使用 cloudscraper 会话")
+        except ImportError:
+            _session = requests.Session()
+            logger.debug("使用标准 requests 会话")
+
         conf = Config.get_instance()
         proxy = conf.proxy()
         if proxy:
@@ -36,10 +45,17 @@ def _get_session() -> requests.Session:
     return _session
 
 
+def reset_session() -> None:
+    """重置会话（测试用或代理变更后）"""
+    global _session
+    _session = None
+
+
 def get_html(url: str, cookies: Optional[dict] = None, encoding: str = "utf-8") -> str:
     """
     请求网页，返回文本内容。
-    失败时返回空字符串（不再返回 'ProxyError' 字符串）。
+    使用 cloudscraper 自动绕过 Cloudflare/JavBus 等反爬保护。
+    失败时返回空字符串。
     """
     conf = Config.get_instance()
     timeout = conf.timeout()
@@ -48,15 +64,31 @@ def get_html(url: str, cookies: Optional[dict] = None, encoding: str = "utf-8") 
 
     for attempt in range(1, retry_count + 1):
         try:
-            headers = {"User-Agent": random.choice(_USER_AGENTS)}
+            headers = {
+                "User-Agent": random.choice(_USER_AGENTS),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,ja;q=0.8,en;q=0.7",
+                "Accept-Encoding": "gzip, deflate",
+            }
             resp = session.get(
                 url,
                 headers=headers,
-                timeout=(timeout, timeout * 2),  # (连接超时, 读取超时)
+                timeout=(timeout, timeout * 2),
                 cookies=cookies,
+                allow_redirects=True,
             )
             resp.encoding = encoding
-            return resp.text
+
+            # 检测反爬页面
+            text = resp.text
+            if "driver-verify" in text or "captcha" in text.lower()[:1000]:
+                logger.warning("检测到反爬验证页面: %s", url)
+                if attempt < retry_count:
+                    time.sleep(2)
+                    continue
+                return ""
+
+            return text
         except requests.RequestException as e:
             logger.warning("请求失败 [%d/%d] %s: %s", attempt, retry_count, url, e)
             if attempt < retry_count:
@@ -71,6 +103,7 @@ def get_xpath_single(html_str: str, xpath: str) -> str:
     if not html_str:
         return ""
     try:
+        from lxml import etree
         tree = etree.fromstring(html_str, etree.HTMLParser())
         result = tree.xpath(xpath)
         if result:
