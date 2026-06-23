@@ -66,7 +66,7 @@ class MissAVScraper(BaseScraper):
             label="",
             tags=tags,
             cover=self._get_cover(soup),
-            cover_small="",
+            cover_small=self._get_cover(soup),
             outline=outline,
             trailer="",
             website=url,
