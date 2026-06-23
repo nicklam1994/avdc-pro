@@ -63,23 +63,25 @@ QLabel#pageTitle {
 
 QPushButton#windowButton {
     background: transparent;
-    color: #5c5f77;
+    color: #4c4f69;
     border: none;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 QPushButton#windowButton:hover {
     background: #ccd0da;
-    color: #4c4f69;
+    color: #1e1e2e;
 }
 
 QPushButton#closeButton {
     background: transparent;
-    color: #5c5f77;
+    color: #4c4f69;
     border: none;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 20px;
+    font-weight: bold;
 }
 
 QPushButton#closeButton:hover {
