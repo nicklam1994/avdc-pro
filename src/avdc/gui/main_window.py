@@ -360,9 +360,22 @@ class MainWindow(QMainWindow):
                          director: str, studio: str, series: str,
                          release: str, tags: str, outline: str,
                          cover_url: str = "", fanart_urls: str = ""):
-        QTreeWidgetItem(self._item_succ, [f"{number} | {title} | {actors}"])
+        item = QTreeWidgetItem(self._item_succ, [f"{number} | {title} | {actors}"])
         self._item_succ.setExpanded(True)
+        # 存數據到節點
+        item.setData(0, Qt.ItemDataRole.UserRole, {
+            "number": number, "title": title, "actors": actors,
+            "director": director, "studio": studio, "series": series,
+            "release": release, "tags": tags, "outline": outline,
+            "cover_url": cover_url, "fanart_urls": fanart_urls,
+        })
         # 更新右側預覽
+        self._show_preview(number, title, actors, director, studio, series,
+                           release, tags, outline, cover_url, fanart_urls)
+
+    def _show_preview(self, number, title, actors, director, studio, series,
+                       release, tags, outline, cover_url="", fanart_urls=""):
+        """更新右側預覽區"""
         self._info_labels["number"].setText(number)
         self._info_labels["title"].setText(title)
         self._info_labels["actor"].setText(actors)
@@ -372,6 +385,7 @@ class MainWindow(QMainWindow):
         self._info_labels["release"].setText(release or "—")
         self._info_labels["tags"].setText(tags or "—")
         self._info_labels["outline"].setText(outline[:500] if outline else "—")
+        self.cover_viewer.clear()
         if cover_url:
             self.cover_viewer.load_image(cover_url)
         if fanart_urls:
@@ -486,7 +500,15 @@ class MainWindow(QMainWindow):
         self._switch_page(0)
 
     def _on_tree_clicked(self, item, col):
-        pass
+        data = item.data(0, Qt.ItemDataRole.UserRole)
+        if not data:
+            return
+        self._show_preview(
+            data.get("number", ""), data.get("title", ""), data.get("actors", ""),
+            data.get("director", ""), data.get("studio", ""), data.get("series", ""),
+            data.get("release", ""), data.get("tags", ""), data.get("outline", ""),
+            data.get("cover_url", ""), data.get("fanart_urls", ""),
+        )
 
     def _toggle_maximize(self):
         if self.isMaximized():
