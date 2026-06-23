@@ -73,7 +73,7 @@ class ScrapeWorker(QThread):
 class SingleScrapeWorker(QThread):
     """單番號刮削工作線程"""
 
-    result = Signal(str, str, str, str, str)
+    result = Signal(str, str, str, str, str, str)
     error = Signal(str)
     finished = Signal()
 
