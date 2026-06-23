@@ -43,6 +43,7 @@ class Config:
     _instance: Optional[Config] = None
 
     def __init__(self, path: str = "config.ini") -> None:
+        self._path = path
         self._conf = configparser.ConfigParser()
         config_path = Path(path)
         if not config_path.exists():
@@ -126,6 +127,27 @@ class Config:
 
     def debug(self) -> bool:
         return self._getbool("debug_mode", "switch")
+
+    # ---- 通用方法 (供 GUI 使用) ----
+    def get(self, section: str, key: str, fallback: str = "") -> str:
+        return self._get(section, key, fallback)
+
+    def has_section(self, section: str) -> bool:
+        return self._conf.has_section(section)
+
+    def add_section(self, section: str) -> None:
+        if not self._conf.has_section(section):
+            self._conf.add_section(section)
+
+    def set(self, section: str, key: str, value: str) -> None:
+        if not self._conf.has_section(section):
+            self._conf.add_section(section)
+        self._conf.set(section, key, value)
+
+    def save_config(self) -> None:
+        """保存當前配置到文件"""
+        with open(self._path, "w", encoding="utf-8") as f:
+            self._conf.write(f)
 
     def emby_url(self) -> str:
         return self._get("emby", "emby_url", "localhost:8096")

@@ -1,37 +1,38 @@
-"""現代側邊欄導航 — PySide6，帶圖標和懸停效果"""
+"""圖標側邊欄導航"""
 from __future__ import annotations
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget, QSizePolicy,
+    QFrame, QVBoxLayout, QLabel, QPushButton,
+    QButtonGroup, QWidget,
 )
 
-
-class NavButton(QPushButton):
-    """側邊欄導航按鈕"""
-
-    def __init__(self, icon_text: str, label: str, parent=None):
-        super().__init__(parent)
-        self.setText(f"  {icon_text}  {label}")
-        self.setCheckable(True)
-        self.setFixedHeight(44)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setObjectName("navButton")
+from avdc import __version__
 
 
 class Sidebar(QFrame):
-    """現代側邊欄"""
+    """左側圖標導航欄"""
 
     page_changed = Signal(int)
+    theme_toggled = Signal()
 
-    def __init__(self, parent=None):
+    PAGES = [
+        ("單番號刮削", "🎯"),
+        ("批量刮削", "📦"),
+        ("設置", "⚙️"),
+        ("日誌", "📋"),
+        ("關於", "ℹ️"),
+    ]
+
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("sidebar")
-        self.setFixedWidth(200)
+        self._setup_ui()
 
+    def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setContentsMargins(12, 20, 12, 12)
         layout.setSpacing(4)
 
         # Logo
@@ -39,33 +40,51 @@ class Sidebar(QFrame):
         logo.setObjectName("logo")
         logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(logo)
-        layout.addSpacing(16)
 
-        # 導航按鈕
-        self._buttons: list[NavButton] = []
-        nav_items = [
-            ("📋", "主頁"),
-            ("🔍", "刮削"),
-            ("🔧", "工具"),
-            ("⚙️", "設置"),
-            ("ℹ️", "關於"),
-        ]
-        for i, (icon, label) in enumerate(nav_items):
-            btn = NavButton(icon, label)
-            btn.clicked.connect(lambda checked, idx=i: self._on_click(idx))
+        layout.addSpacing(24)
+
+        # 導航按鈕組
+        self._button_group = QButtonGroup(self)
+        self._button_group.setExclusive(True)
+
+        for idx, (name, icon) in enumerate(self.PAGES):
+            btn = QPushButton(f"  {icon}  {name}")
+            btn.setObjectName("navButton")
+            btn.setCheckable(True)
+            btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            btn.setFixedHeight(40)
+            self._button_group.addButton(btn, idx)
             layout.addWidget(btn)
-            self._buttons.append(btn)
 
-        self._buttons[0].setChecked(True)
+        # 默認選中第一個
+        self._button_group.button(0).setChecked(True)
+
         layout.addStretch()
 
-        # 版本標籤
-        ver = QLabel("v1.1.0")
-        ver.setObjectName("versionLabel")
-        ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(ver)
+        # ─── 主題切換按鈕 ───
+        self._theme_btn = QPushButton("  🌙  暗色模式")
+        self._theme_btn.setObjectName("navButton")
+        self._theme_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self._theme_btn.setFixedHeight(40)
+        self._theme_btn.clicked.connect(self.theme_toggled.emit)
+        layout.addWidget(self._theme_btn)
 
-    def _on_click(self, index: int):
-        for i, btn in enumerate(self._buttons):
-            btn.setChecked(i == index)
-        self.page_changed.emit(index)
+        layout.addSpacing(8)
+
+        # 版本號
+        version = QLabel(f"v{__version__}")
+        version.setObjectName("versionLabel")
+        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(version)
+
+        # 連接信號
+        self._button_group.idClicked.connect(self.page_changed.emit)
+
+    def update_theme_button(self, is_dark: bool) -> None:
+        """更新主題按鈕顯示"""
+        self._theme_btn.setText("  🌙  暗色模式" if is_dark else "  ☀️  亮色模式")
+
+    def set_current_page(self, index: int) -> None:
+        btn = self._button_group.button(index)
+        if btn:
+            btn.setChecked(True)

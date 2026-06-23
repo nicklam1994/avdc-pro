@@ -1,0 +1,325 @@
+/* ═══════════════════════════════════════════════════════
+   AVDC-Pro — Catppuccin Latte 亮色主題
+   ═══════════════════════════════════════════════════════ */
+
+* {
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+}
+
+QMainWindow { background: #eff1f5; }
+QWidget#centralWidget { background: #eff1f5; }
+QWidget#contentArea { background: #eff1f5; }
+
+/* ═══════ 側邊欄 ═══════ */
+QFrame#sidebar {
+    background: #e6e9ef;
+    border-right: 1px solid #ccd0da;
+}
+
+QLabel#logo {
+    color: #1e66f5;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 12px 0;
+}
+
+QPushButton#navButton {
+    background: transparent;
+    color: #5c5f77;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: left;
+    font-size: 14px;
+}
+
+QPushButton#navButton:hover {
+    background: #ccd0da;
+    color: #4c4f69;
+}
+
+QPushButton#navButton:checked {
+    background: #bcc0cc;
+    color: #1e66f5;
+    font-weight: bold;
+}
+
+QLabel#versionLabel {
+    color: #9ca0b0;
+    font-size: 11px;
+}
+
+/* ═══════ 標題欄 ═══════ */
+QWidget#titleBar {
+    background: #e6e9ef;
+    border-bottom: 1px solid #ccd0da;
+}
+
+QLabel#pageTitle {
+    color: #4c4f69;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QPushButton#windowButton {
+    background: transparent;
+    color: #5c5f77;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+QPushButton#windowButton:hover {
+    background: #ccd0da;
+    color: #4c4f69;
+}
+
+QPushButton#closeButton {
+    background: transparent;
+    color: #5c5f77;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+QPushButton#closeButton:hover {
+    background: #d20f39;
+    color: #ffffff;
+}
+
+/* ═══════ 卡片 ═══════ */
+QFrame#card {
+    background: #ffffff;
+    border: 1px solid #ccd0da;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+QFrame#toolCard {
+    background: #ffffff;
+    border: 1px solid #ccd0da;
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+QFrame#toolCard:hover {
+    background: #eff1f5;
+    border: 1px solid #1e66f5;
+}
+
+/* ═══════ 按鈕 ═══════ */
+QPushButton {
+    background: #ccd0da;
+    color: #4c4f69;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+QPushButton:hover {
+    background: #bcc0cc;
+}
+
+QPushButton:disabled {
+    background: #e6e9ef;
+    color: #9ca0b0;
+}
+
+QPushButton#primaryButton {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #1e66f5, stop:1 #209fb5);
+    color: #ffffff;
+    font-weight: bold;
+}
+
+QPushButton#primaryButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #209fb5, stop:1 #04a5e5);
+}
+
+QPushButton#primaryButton:disabled {
+    background: #bcc0cc;
+    color: #9ca0b0;
+}
+
+/* ═══════ 進度條 ═══════ */
+QProgressBar#mainProgress {
+    border: none;
+    border-radius: 3px;
+    background: #ccd0da;
+    max-height: 6px;
+}
+
+QProgressBar#mainProgress::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #1e66f5, stop:0.5 #8839ef, stop:1 #ea76cb);
+    border-radius: 3px;
+}
+
+/* ═══════ 文本瀏覽器 ═══════ */
+QTextBrowser {
+    background: #ffffff;
+    color: #5c5f77;
+    border: 1px solid #ccd0da;
+    border-radius: 8px;
+    font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+    font-size: 12px;
+    padding: 8px;
+    selection-background-color: #bcc0cc;
+}
+
+/* ═══════ 樹形控件 ═══════ */
+QTreeWidget {
+    background: transparent;
+    color: #4c4f69;
+    border: none;
+    outline: none;
+}
+
+QTreeWidget::item {
+    padding: 6px 4px;
+    border-radius: 6px;
+}
+
+QTreeWidget::item:selected {
+    background: #ccd0da;
+    color: #1e66f5;
+}
+
+QTreeWidget::item:hover {
+    background: #e6e9ef;
+}
+
+/* ═══════ 輸入框 ═══════ */
+QLineEdit {
+    background: #ffffff;
+    color: #4c4f69;
+    border: 2px solid #ccd0da;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+QLineEdit:focus {
+    border: 2px solid #1e66f5;
+}
+
+QLineEdit::placeholder {
+    color: #9ca0b0;
+}
+
+/* ═══════ 標籤 ═══════ */
+QLabel { color: #4c4f69; }
+QLabel#infoLabel { color: #8c8fa1; font-size: 12px; }
+QLabel#infoValue { color: #4c4f69; font-size: 13px; }
+
+/* ═══════ 關於頁 ═══════ */
+QLabel#aboutTitle { color: #1e66f5; font-size: 36px; font-weight: bold; }
+QLabel#aboutVersion { color: #5c5f77; font-size: 16px; }
+QLabel#aboutDesc { color: #4c4f69; font-size: 14px; line-height: 1.6; }
+
+/* ═══════ 分組框 ═══════ */
+QGroupBox {
+    color: #1e66f5;
+    border: 1px solid #ccd0da;
+    border-radius: 10px;
+    margin-top: 12px;
+    padding-top: 20px;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 14px;
+    padding: 0 8px;
+}
+
+/* ═══════ 複選框 ═══════ */
+QCheckBox {
+    color: #4c4f69;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ccd0da;
+    border-radius: 4px;
+    background: #ffffff;
+}
+
+QCheckBox::indicator:checked {
+    background: #1e66f5;
+    border: 2px solid #1e66f5;
+}
+
+/* ═══════ 下拉框 ═══════ */
+QComboBox {
+    background: #ffffff;
+    color: #4c4f69;
+    border: 2px solid #ccd0da;
+    border-radius: 8px;
+    padding: 6px 12px;
+}
+
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+
+/* ═══════ 微調框 ═══════ */
+QSpinBox {
+    background: #ffffff;
+    color: #4c4f69;
+    border: 2px solid #ccd0da;
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
+/* ═══════ 滾動條 ═══════ */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #bcc0cc;
+    border-radius: 4px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #9ca0b0;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+/* ═══════ 滾動區域 ═══════ */
+QScrollArea {
+    border: none;
+    background: transparent;
+}
+
+/* ═══════ 封面預覽 ═══════ */
+QLabel#coverPoster {
+    background: #ffffff;
+    border: 1px solid #ccd0da;
+    border-radius: 10px;
+    color: #9ca0b0;
+}
+
+QLabel#coverFanart {
+    background: #ffffff;
+    border: 1px solid #ccd0da;
+    border-radius: 10px;
+    color: #9ca0b0;
+}

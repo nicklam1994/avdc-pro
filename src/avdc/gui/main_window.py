@@ -20,6 +20,7 @@ from avdc.gui.widgets.log_viewer import LogViewer
 from avdc.gui.widgets.progress_bar import ProgressWidget
 from avdc.gui.widgets.sidebar import Sidebar
 from avdc.gui.workers import EmbyActorWorker, ScrapeWorker, SingleScrapeWorker
+from avdc.gui.app import ThemeManager
 
 
 class MainWindow(QMainWindow):
@@ -306,6 +307,7 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self):
         self._sidebar.page_changed.connect(self._switch_page)
+        self._sidebar.theme_toggled.connect(self._toggle_theme)
         self.btn_start.clicked.connect(self._start_batch_scrape)
         self.btn_cancel.clicked.connect(self._cancel_scrape)
         self.btn_select_dir.clicked.connect(self._select_directory)
@@ -434,6 +436,12 @@ class MainWindow(QMainWindow):
             lbl.setText("")
         self.cover_viewer.clear()
         self.progress.reset()
+
+    def _toggle_theme(self):
+        """切換暗/亮主題"""
+        theme_mgr = ThemeManager.instance()
+        new_theme = theme_mgr.toggle_theme()
+        self._sidebar.update_theme_button(theme_mgr.is_dark)
 
     def _show_version(self):
         self.log_viewer.append_safe(f"[*]{'='*50}")
