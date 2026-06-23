@@ -30,10 +30,8 @@ _DEFAULT_CONFIG = {
     "emby": {"emby_url": "localhost:8096", "api_key": ""},
     "javlibrary_url": {"url": "www.n43a.com"},
     "Sources": {
-            "missav": "1",
-            "javbus": "1",
-            "javdb": "1",
-        "fanza": "1", "airav": "1", "avsox": "1", "xcity": "1",
+        "missav": "1", "javbus": "1", "javdb": "1", "javlib": "1",
+        "jav321": "1", "fanza": "1", "airav": "1", "xcity": "1",
         "mgstage": "1", "fc2": "1", "dlsite": "1", "metajavlib": "1",
     },
 }
@@ -167,8 +165,8 @@ class Config:
             if self._getint("Sources", name) == 1:
                 sources.append(name)
         return sources if sources else [
-            "javbus", "javdb", "javlib", "jav321", "fanza",
-            "airav", "avsox", "xcity", "mgstage", "fc2", "dlsite", "metajavlib",
+            "missav", "javbus", "javdb", "javlib", "jav321", "fanza",
+            "airav", "xcity", "mgstage", "fc2", "dlsite", "metajavlib",
         ]
 
     def save(self, json_config: dict) -> None:

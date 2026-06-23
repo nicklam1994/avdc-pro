@@ -33,5 +33,5 @@ def all_scrapers() -> dict[str, type[BaseScraper]]:
 # 导入所有 scraper 模块以触发注册
 from avdc.scrapers import (  # noqa: E402, F401
     javbus, javdb, javlib, jav321, fanza, airav,
-    avsox, xcity, mgstage, fc2, dlsite, metajavlib, missav,
+    xcity, mgstage, fc2, dlsite, metajavlib, missav,
 )
