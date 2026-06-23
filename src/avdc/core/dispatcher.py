@@ -14,13 +14,13 @@ logger = logging.getLogger(__name__)
 # 番号模式 → 优先 scraper 映射
 _PRIORITY_RULES: list[tuple[str, list[str]]] = [
     # 无码番号 (纯数字开头 5+位, n\d{4}, HEYZO)
-    (r"^\d{5,}|^n\d{4}|HEYZO", ["avsox", "javbus"]),
+    (r"^\d{5,}|^n\d{4}|HEYZO", ["missav", "javbus"]),
     # 数字+字母混合 (如 259LUXU)
-    (r"^\d+\D+", ["mgstage"]),
+    (r"^\d+\D+", ["missav", "mgstage"]),
     # FC2
-    (r"FC2", ["fc2"]),
+    (r"FC2", ["missav", "fc2"]),
     # SIRO
-    (r"SIRO", ["mgstage"]),
+    (r"SIRO", ["missav", "mgstage"]),
     # DLsite (RJ/VJ)
     (r"^[RV]J\d+", ["dlsite"]),
     # FANZA CID (字母+00+数字)

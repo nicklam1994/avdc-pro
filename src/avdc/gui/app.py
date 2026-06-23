@@ -85,12 +85,11 @@ class ThemeManager:
 
 def create_app() -> QApplication:
     """創建並配置 QApplication"""
-    app = QApplication(sys.argv)
-
-    # 高 DPI 支持
-    app.setHighDpiScaleFactorRoundingPolicy(
+    # 高 DPI 支持 — 必須在 QApplication 之前調用
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
+    app = QApplication(sys.argv)
 
     # 載入字體
     font_dir = Path(__file__).parent / "resources" / "fonts"

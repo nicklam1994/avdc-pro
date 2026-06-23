@@ -1,16 +1,26 @@
-"""瀏覽器引擎 — Playwright 繞過 Cloudflare 等反爬保護"""
+"""瀏覽器引擎 — Playwright 繞過 Cloudflare (可選, fallback 到 cloudscraper)"""
 from __future__ import annotations
 
 import logging
-import time
 from typing import Optional
-
-from avdc.config import Config
 
 logger = logging.getLogger(__name__)
 
 _browser = None
 _context = None
+_playwright_available: Optional[bool] = None
+
+
+def is_playwright_available() -> bool:
+    """檢查 playwright 是否已安裝"""
+    global _playwright_available
+    if _playwright_available is None:
+        try:
+            import playwright
+            _playwright_available = True
+        except ImportError:
+            _playwright_available = False
+    return _playwright_available
 
 
 def _get_browser():
@@ -43,19 +53,19 @@ def _get_browser():
 def get_html_browser(url: str, wait_selector: str = "", timeout: int = 15000) -> str:
     """
     使用 Playwright 瀏覽器獲取頁面 HTML。
-    自動等待 Cloudflare 驗證完成。
-    
-    Args:
-        url: 目標 URL
-        wait_selector: 等待出現的 CSS 選擇器（可選）
-        timeout: 超時毫秒數
+    如果 Playwright 未安裝，自動 fallback 到 cloudscraper。
     """
+    if not is_playwright_available():
+        logger.info("Playwright 未安裝，使用 cloudscraper 替代: %s", url)
+        return _fallback_cloudscraper(url)
+
     context = _get_browser()
     page = context.new_page()
     try:
         page.goto(url, wait_until="domcontentloaded", timeout=timeout)
 
-        # 等待 Cloudflare 驗證（通常 5 秒內完成）
+        # 等待 Cloudflare 驗證
+        import time
         for _ in range(10):
             title = page.title()
             if "Just a moment" not in title and "Cloudflare" not in title:
@@ -70,7 +80,7 @@ def get_html_browser(url: str, wait_selector: str = "", timeout: int = 15000) ->
             try:
                 page.wait_for_selector(wait_selector, timeout=5000)
             except Exception:
-                pass  # 超時繼續
+                pass
 
         return page.content()
     except Exception as e:
@@ -78,6 +88,21 @@ def get_html_browser(url: str, wait_selector: str = "", timeout: int = 15000) ->
         return ""
     finally:
         page.close()
+
+
+def _fallback_cloudscraper(url: str) -> str:
+    """Fallback: 使用 cloudscraper"""
+    try:
+        import cloudscraper
+        session = cloudscraper.create_scraper(
+            browser={"browser": "chrome", "platform": "windows", "mobile": False}
+        )
+        resp = session.get(url, timeout=15)
+        resp.encoding = "utf-8"
+        return resp.text
+    except Exception as e:
+        logger.error("cloudscraper 請求失敗 %s: %s", url, e)
+        return ""
 
 
 def close_browser() -> None:
