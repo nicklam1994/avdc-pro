@@ -385,13 +385,16 @@ class MainWindow(QMainWindow):
         self._single_worker.finished.connect(lambda: self.single_log.append_safe("[*] 完成"))
         self._single_worker.start()
 
-    def _on_single_result(self, number: str, title: str, actor: str, tags: str, outline: str):
+    def _on_single_result(self, number: str, title: str, actor: str, tags: str, outline: str, cover_url: str = ""):
         self.single_log.append_safe(f"[+] {number} | {title} | {actor}")
         self._single_info["number"].setText(number)
         self._single_info["title"].setText(title)
         self._single_info["actor"].setText(actor)
         self._single_info["tags"].setText(tags)
         self._single_info["outline"].setText(outline[:300] if outline else "")
+        if cover_url:
+            self.single_cover.load_image(cover_url)
+            self.single_log.append_safe(f"[+] 封面: {cover_url[:60]}...")
 
     # ═══════════════════ 工具 ═══════════════════
 

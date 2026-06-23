@@ -92,7 +92,7 @@ class SingleScrapeWorker(QThread):
                 download_cover(movie, folder)
                 self.result.emit(
                     movie.movie_id, movie.title, movie.actor_str,
-                    movie.tag_str, movie.outline
+                    movie.tag_str, movie.outline, movie.cover or ""
                 )
             else:
                 self.error.emit(f"未找到: {self.number}")
