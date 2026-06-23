@@ -1,0 +1,181 @@
+/* AVDC-Pro 全局樣式表 — Catppuccin Mocha 配色 */
+
+QMainWindow {
+    background: #1e1e2e;
+}
+
+QWidget#centralwidget {
+    background: #1e1e2e;
+}
+
+/* 導航欄 */
+QWidget[objectName="nav"] {
+    background: #181825;
+}
+
+/* 按鈕 */
+QPushButton {
+    background: #89b4fa;
+    color: #1e1e2e;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background: #74c7ec;
+}
+
+QPushButton:disabled {
+    background: #585b70;
+    color: #a6adc8;
+}
+
+QPushButton#pushButton_start_cap {
+    background: #a6e3a1;
+}
+
+/* 進度條 */
+QProgressBar {
+    border: 2px solid #313244;
+    border-radius: 8px;
+    text-align: center;
+    background: #181825;
+}
+
+QProgressBar::chunk {
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 #89b4fa, stop:1 #cba6f7);
+    border-radius: 6px;
+}
+
+/* 文本瀏覽器 */
+QTextBrowser {
+    background: #181825;
+    color: #cdd6f4;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    font-family: "JetBrains Mono", "Fira Code", "Consolas", monospace;
+    font-size: 12px;
+    padding: 4px;
+}
+
+/* 樹形控件 */
+QTreeWidget {
+    background: #181825;
+    color: #cdd6f4;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    outline: none;
+}
+
+QTreeWidget::item {
+    padding: 4px;
+}
+
+QTreeWidget::item:selected {
+    background: #313244;
+    color: #89b4fa;
+}
+
+QTreeWidget::item:hover {
+    background: #45475a;
+}
+
+/* 標籤 */
+QLabel {
+    color: #cdd6f4;
+}
+
+/* 輸入框 */
+QLineEdit {
+    background: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QLineEdit:focus {
+    border: 1px solid #89b4fa;
+}
+
+/* 下拉框 */
+QComboBox {
+    background: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QComboBox::drop-down {
+    border: none;
+}
+
+/* 分組框 */
+QGroupBox {
+    color: #89b4fa;
+    border: 1px solid #313244;
+    border-radius: 8px;
+    margin-top: 8px;
+    padding-top: 16px;
+    font-weight: bold;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 12px;
+    padding: 0 6px;
+}
+
+/* 複選框 */
+QCheckBox {
+    color: #cdd6f4;
+    spacing: 6px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border: 1px solid #45475a;
+    border-radius: 4px;
+    background: #313244;
+}
+
+QCheckBox::indicator:checked {
+    background: #89b4fa;
+    border: 1px solid #89b4fa;
+}
+
+/* 微調框 */
+QSpinBox {
+    background: #313244;
+    color: #cdd6f4;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+/* 滾動條 */
+QScrollBar:vertical {
+    background: #181825;
+    width: 8px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical {
+    background: #45475a;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #585b70;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
