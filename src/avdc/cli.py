@@ -62,10 +62,24 @@ def main() -> None:
     parser.add_argument("-c", "--config", default="config.ini", help="配置文件路徑")
     parser.add_argument("-d", "--debug", action="store_true", help="調試模式")
     parser.add_argument("--gui", action="store_true", help="啟動圖形界面")
+    parser.add_argument("--reset-config", action="store_true", help="重置 config.ini 為默認值")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args()
     setup_logging(args.debug)
+
+    if args.reset_config:
+        from pathlib import Path
+        config_file = Path(args.config).resolve()
+        if config_file.exists():
+            config_file.unlink()
+            print(f"✅ 已刪除: {config_file}")
+        else:
+            print(f"ℹ️ 文件不存在: {config_file}")
+        # 重建
+        Config.get_instance(str(config_file))
+        print(f"✅ 已重建默認配置: {config_file}")
+        return
 
     if args.gui:
         run_gui()

@@ -45,7 +45,8 @@ class Config:
     def __init__(self, path: str = "config.ini") -> None:
         self._path = path
         self._conf = configparser.ConfigParser()
-        config_path = Path(path)
+        config_path = Path(path).resolve()
+        logger.info("📁 配置文件: %s", config_path)
         if not config_path.exists():
             logger.warning("配置文件 %s 不存在，使用内置默认值", path)
             for section, values in _DEFAULT_CONFIG.items():
