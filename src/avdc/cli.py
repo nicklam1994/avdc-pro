@@ -44,13 +44,20 @@ def process_single(number: str, filepath: str = "", config: Config = None) -> Mo
 
 def run_gui():
     """啟動 GUI 模式"""
-    from avdc.gui.app import create_app
-    from avdc.gui.main_window import MainWindow
+    try:
+        from avdc.gui.app import create_app
+        from avdc.gui.main_window import MainWindow
 
-    app = create_app()
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+        app = create_app()
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"❌ GUI 啟動失敗: {e}")
+        import traceback
+        traceback.print_exc()
+        input("按 Enter 鍵退出...")  # 防止閃退
+        sys.exit(1)
 
 
 def main() -> None:

@@ -11,9 +11,18 @@ from PySide6.QtWidgets import QApplication, QGraphicsEffect
 from avdc.config import Config
 
 
+def _resource_dir() -> Path:
+    """獲取資源目錄 (支持 PyInstaller 打包)"""
+    if getattr(sys, 'frozen', False):
+        # PyInstaller 打包後
+        return Path(sys._MEIPASS) / "avdc" / "gui" / "resources"
+    # 正常 Python 運行
+    return Path(__file__).parent / "resources"
+
+
 def _load_stylesheet(name: str) -> str:
     """從 resources/ 加載 QSS 文件"""
-    qss_path = Path(__file__).parent / "resources" / name
+    qss_path = _resource_dir() / name
     if qss_path.exists():
         return qss_path.read_text(encoding="utf-8")
     return ""
@@ -92,7 +101,7 @@ def create_app() -> QApplication:
     app = QApplication(sys.argv)
 
     # 載入字體
-    font_dir = Path(__file__).parent / "resources" / "fonts"
+    font_dir = _resource_dir() / "fonts"
     if font_dir.is_dir():
         for font_file in font_dir.glob("*.ttf"):
             QFontDatabase.addApplicationFont(str(font_file))
